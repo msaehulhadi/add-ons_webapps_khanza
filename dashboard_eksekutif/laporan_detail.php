@@ -580,21 +580,25 @@ ob_start();
                             var no = item.no || '';
                             var nm_perawatan = item.nm_perawatan || 'N/A';
                             var status = item.status || 'N/A';
-                            var biaya = parseFloat(item.biaya) || 0;
-                            var jumlah = parseFloat(item.jumlah) || 0;
-                            var totalbiaya = parseFloat(item.totalbiaya) || 0;
+                            
+                            // Clean up zero values untuk mereduksi visual clutter
+                            var biayaText = parseFloat(item.biaya) > 0 ? formatRupiah(item.biaya) : '';
+                            var jumlahText = parseFloat(item.jumlah) > 0 ? parseFloat(item.jumlah) : '';
+                            var totalbiayaText = parseFloat(item.totalbiaya) !== 0 ? formatRupiah(item.totalbiaya) : '';
+                            var statusText = (status === '-' || status === '') ? '' : status;
 
                             html += '<tr>';
                             html += '<td>' + (no || '') + '</td>';
                             html += '<td>' + (nm_perawatan) + '</td>';
-                            html += '<td>' + (status) + '</td>';
-                            html += '<td class="text-end">' + (biaya > 0 ? formatRupiah(biaya) : 'Rp 0') + '</td>';
-                            html += '<td class="text-center">' + (jumlah > 0 ? jumlah : '0') + '</td>';
-                            html += '<td class="text-end">' + (totalbiaya > 0 ? formatRupiah(totalbiaya) : 'Rp 0') + '</td>';
+                            html += '<td>' + (statusText) + '</td>';
+                            html += '<td class="text-end">' + (biayaText) + '</td>';
+                            html += '<td class="text-center">' + (jumlahText) + '</td>';
+                            html += '<td class="text-end">' + (totalbiayaText) + '</td>';
                             html += '</tr>';
                             
+                            var totalbiayaNum = parseFloat(item.totalbiaya) || 0;
                             if (status !== '' && status !== '-') {
-                                grandTotal += totalbiaya;
+                                grandTotal += totalbiayaNum;
                             }
                         });
                     } else {

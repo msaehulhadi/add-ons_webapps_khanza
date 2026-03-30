@@ -12,6 +12,10 @@ header('Content-Type: application/json');
 require_once(dirname(__DIR__) . '/config/koneksi.php'); 
 require_once(dirname(__DIR__) . '/includes/functions.php');
 
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 // 3. Keamanan
 if (!isset($_SESSION['user_id'])) {
     http_response_code(403); 

@@ -8,6 +8,29 @@ require_once('includes/header.php');
 ?>
 
 <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.bootstrap5.min.css">
+<style>
+/* === SKELETON LOADER LAZY BILLING === */
+.skeleton-text {
+    display: inline-block;
+    width: 80px;
+    height: 14px;
+    background: linear-gradient(90deg, #e0e0e0 25%, #f5f5f5 50%, #e0e0e0 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.4s infinite;
+    border-radius: 4px;
+    vertical-align: middle;
+}
+@keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+}
+html.theme-glass-solid .skeleton-text,
+html.theme-glass-animated .skeleton-text {
+    background: linear-gradient(90deg, rgba(255,255,255,0.1) 25%, rgba(255,255,255,0.25) 50%, rgba(255,255,255,0.1) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.4s infinite;
+}
+</style>
 
 <div class="container-fluid">
     
@@ -138,6 +161,7 @@ require_once('includes/header.php');
             "ajax": {
                 "url": "api/data_kunjungan_ralan.php",
                 "type": "GET",
+                "global": false, // Matikan overlay loading global agar tidak mengganggu saat mengetik/search
                 "data": function(d) {
                     // KIRIM PARAMETER FILTER KE BACKEND
                     d.mode = $('#chk_semua').is(':checked') ? 'semua' : 'periode';
@@ -190,7 +214,7 @@ require_once('includes/header.php');
                     $(row).addClass('table-warning border-start border-warning border-4');
                 }
             },
-            "columns": [
+        "columns": [
                 { "data": "waktu" },
                 { 
                     "data": null,
@@ -212,12 +236,25 @@ require_once('includes/header.php');
                         if (penjamin.includes('bpjs')) badgeClass = 'bg-success';
                         else if (penjamin.includes('umum')) badgeClass = 'bg-primary';
                         else if (penjamin.includes('asuransi')) badgeClass = 'bg-info text-dark';
-                        
                         return `<span class="badge ${badgeClass}">${data.penjamin}</span>`;
                     }
                 },
-                { "data": "biaya_obat", "className": "text-end" },
-                { "data": "estimasi", "className": "text-end fw-bold text-success" },
+                { 
+                    "data": "biaya_obat", 
+                    "className": "text-end",
+                    "render": function(data, type, row) {
+                        if (data === null) return `<span class="skeleton-cell" data-norawat="${row.no_rawat}" data-col="biaya_obat"><span class="skeleton-text"></span></span>`;
+                        return data;
+                    }
+                },
+                { 
+                    "data": "estimasi", 
+                    "className": "text-end fw-bold text-success",
+                    "render": function(data, type, row) {
+                        if (data === null) return `<span class="skeleton-cell" data-norawat="${row.no_rawat}" data-col="estimasi"><span class="skeleton-text"></span></span>`;
+                        return data;
+                    }
+                },
                 { 
                     "data": "status",
                     "className": "text-center",
@@ -236,11 +273,73 @@ require_once('includes/header.php');
                                 </button>`;
                     }
                 }
-            ]
+            ],
+            "drawCallback": function() {
+                loadBillingAsync('ralan');
+            }
         });
     });
 
     function reloadTable() { tableRalan.ajax.reload(); }
+
+    // =====================================================
+    // LAZY BILLING LOADER — Fetch biaya async per baris
+    // =====================================================
+    var _billingQueue = [];
+    var _billingRunning = 0;
+    var _billingConcurrency = 3; // Max 3 request paralel
+
+    function loadBillingAsync(type) {
+        // Kumpulkan semua sel skeleton yang belum diisi
+        var cells = document.querySelectorAll('.skeleton-cell');
+        _billingQueue = [];
+        cells.forEach(function(el) {
+            var noRawat = el.getAttribute('data-norawat');
+            // Hindari duplikat di queue
+            if (!_billingQueue.some(function(i){ return i.no_rawat === noRawat; })) {
+                _billingQueue.push({ no_rawat: noRawat });
+            }
+        });
+        _processBillingQueue(type);
+    }
+
+    function _processBillingQueue(type) {
+        while (_billingRunning < _billingConcurrency && _billingQueue.length > 0) {
+            var item = _billingQueue.shift();
+            _billingRunning++;
+            _fetchOneBilling(item.no_rawat, type);
+        }
+    }
+
+    function _fetchOneBilling(noRawat, type) {
+        var apiUrl = 'api/hitung_estimasi_ralan.php';
+        $.ajax({
+            url: apiUrl,
+            type: 'GET',
+            global: false,  // Jangan trigger globalLoadingOverlay
+            data: { no_rawat: noRawat },
+            dataType: 'json',
+            success: function(res) {
+                // Update sel biaya_obat
+                document.querySelectorAll('.skeleton-cell[data-norawat="' + noRawat + '"][data-col="biaya_obat"]').forEach(function(el) {
+                    el.outerHTML = res.biaya_obat || '-';
+                });
+                // Update sel estimasi
+                document.querySelectorAll('.skeleton-cell[data-norawat="' + noRawat + '"][data-col="estimasi"]').forEach(function(el) {
+                    el.outerHTML = '<span class="fw-bold text-success">' + (res.estimasi || '-') + '</span>';
+                });
+            },
+            error: function() {
+                document.querySelectorAll('.skeleton-cell[data-norawat="' + noRawat + '"]').forEach(function(el) {
+                    el.outerHTML = '<span class="text-muted">-</span>';
+                });
+            },
+            complete: function() {
+                _billingRunning--;
+                _processBillingQueue(type);
+            }
+        });
+    }
 
     function showDetailBilling(noRawat, namaPasien) {
         $('#lbl-pasien').text(namaPasien);

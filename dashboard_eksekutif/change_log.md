@@ -120,3 +120,18 @@
 ### ✨ Penambahan / 🐛 Perbaikan
 - **[BPJS]** Implementasi deteksi cerdas untuk **Anomali Batal (Task 99)**. Pasien yang dibatalkan sepihak oleh admisi di SIMRS namun gagal mengirim log batal ke server BPJS akan secara eksplisit ditandai (*Red Flag*).
 - **[BPJS]** Anomali batal eksklusif dikecualikan dari kalkulator *Compliance Rate* / *Drop-off Funnel* agar tidak merusak persentase metrik performa kepatuhan Task ID rumah sakit.
+
+## [v3.6.0] — 30 Maret 2026, 11:30 WIB
+### ⚡ Optimasi & 🔒 Keamanan
+- **[KEMANAN]** Implementasi prinsip **Zero-Trust Security**. Menutup celah SQL Injection, menambahkan proteksi *Brute-Force Login* (lockout otomatis), enkripsi Session Ketat, serta menyuntikkan *HTTP Security Headers* lapis ganda.
+- **[SISTEM API]** Peluncuran sistem *Auth Guard* otomatis di seluruh 37+ _endpoint_ API menggunakan directive `auto_prepend_file`, memblokir akses publik secara sepihak.
+- **[UI/UX]** Rilis **Premium Theme Engine**. Pengguna kini dapat memilih 3 gaya visual: _Bright Bootstrap_ (Klasik), _Glass Solid_ (Gelap Nyaman), hingga _Glass Animated_ (Gradien Dinamis Futuristik) yang langsung mensinkronisasikan warna seluruh grafik *Chart.js* tanpa menyegarkan halaman.
+- **[COPYRIGHT]** Penerapan mekanisme Proteksi Anti-Pembajakan mutlak (Rule #17) dengan kombinasi Server-Side (*ob_start*) ganda dan Client-Side Obfuscation, menjamin perlindungan kekayaan intelektual kreator secara penuh.
+
+## [v3.7.0] — 30 Maret 2026, 18:25 WIB
+### ✨ Penambahan / ⚡ Optimasi
+- **[DOKUMENTASI]** Peluncuran **Buku Sakti v2.0** yang terintegrasi langsung ke dalam Sidebar Dashboard. 
+- **[MODAL]** Implementasi *Interactive Documentation Modal* dengan teknologi *Dynamic Markdown Rendering* (Regex-based).
+- **[UI/UX]** Fitur **Module Accordion**: Panduan kini tersaji secara collapsible per kategori (Keuangan, Farmasi, HRD, dll) untuk navigasi yang lebih efisien.
+- **[MEDIA]** Penambahan 50+ tangkapan layar (screenshots) High-Resolution ke dalam panduan sebagai referensi visual langkah-demi-langkah.
+- **[FITUR]** Implementasi fungsi **Print Dokumentasi** yang ringkas dan ramah printer untuk kebutuhan manual fisik.

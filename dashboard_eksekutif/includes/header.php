@@ -1,18 +1,57 @@
 <?php
 /*
- * File header.php (FINAL FIX - STRUCTURE REFACTOR)
- * - Fix: Menghapus container-fluid/row pembungkus agar Main bisa resize otomatis.
- * - Fitur: Sidebar & Main sejajar (siblings), bukan parent-child dalam grid.
+ * File header.php (SECURITY HARDENED — KILL SWITCH ANTI-TAMPERING)
+ * - TAMBAHAN: ob_start() dengan callback validasi copyright (Rule #17)
+ * - Callback bernama samar: sanitize_output_buffer()
+ * - Jika salah satu dari 5 komponen copyright hilang → return "" (Blank Page murni)
+ * - Pembajak akan kebingungan karena tidak ada pesan error sama sekali
  */
+
+// =========================================================================
+// [KILL SWITCH ANTI-TAMPERING — SERVER SIDE — RULE #17]
+// Fungsi ini mengecek keberadaan 5 komponen copyright wajib di dalam
+// buffer HTML output sebelum dikirimkan ke browser.
+// =========================================================================
+function sanitize_output_buffer($buffer) {
+    // 5 Signature Base64 yang wajib ada minimal DUAKALI di HTML output
+    // (Sekali di Bar Footer, sekali di Modal Developer)
+    // Jika salah satu dicurangi/dihapus/dirubah → return "" (BLANK PAGE)
+    $signatures = [
+        base64_decode('SWNoc2FuIExlb25oYXJ0'),                    // Ichsan Leonhart (Nama)
+        base64_decode('c2F3ZXJpYS5jby9pY2hzYW5sZW9uaGFydA=='),   // saweria.co/ichsanleonhart
+        base64_decode('NjI4NTcyNjEyMzc3Nw=='),                    // 6285726123777 (WA)
+        base64_decode('QEljaHNhbkxlb25oYXJ0'),                    // @IchsanLeonhart (Telegram)
+        base64_decode('aHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL2ljaHNhbmxlb25oYXJ0L2FkZC1vbnNfd2ViYXBwc19raGFuemEvbWFpbi9xcmlzLWljaHNhbi5wbmc='), // QRIS URL
+    ];
+
+    foreach ($signatures as $sig) {
+        // strpos() mengembalikan false jika string tidak ditemukan sama sekali
+        // Kita gunakan strpos agar lebih robust terhadap variasi output
+        if (strpos($buffer, $sig) === false) {
+            // BLANKING: return string kosong tanpa keterangan (Rule #17)
+            return "";
+        }
+    }
+
+    return $buffer;
+}
+
+// Mulai output buffering SEBELUM HTML apapun ditulis
+// Callback akan dipanggil otomatis saat script selesai (ob_end_flush)
+ob_start('sanitize_output_buffer');
+
+// =========================================================================
+// [END KILL SWITCH — SERVER SIDE]
+// =========================================================================
 
 require_once(dirname(__DIR__) . '/config/koneksi.php');
 
 if (!isset($_SESSION['user_id'])) {
-    header('Location: index.php'); 
+    header('Location: index.php');
     exit;
 }
 
-$nama_instansi = "Dashboard RS"; 
+$nama_instansi = "Dashboard RS";
 $logo_src = "core/logo.php";
 
 $sql_setting = "SELECT setting.nama_instansi FROM setting LIMIT 1";
@@ -31,7 +70,7 @@ function is_active($page, $current) {
     return ($page == $current) ? 'active' : '';
 }
 function get_arrow_class($pages, $current) {
-    return in_array($current, $pages) ? '' : 'collapsed'; 
+    return in_array($current, $pages) ? '' : 'collapsed';
 }
 ?>
 
@@ -41,6 +80,13 @@ function get_arrow_class($pages, $current) {
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?php echo isset($page_title) ? $page_title : 'Dashboard'; ?> - <?php echo $nama_instansi; ?></title>
+    <!-- [PREMIUM THEME ENGINE] Anti-FOUC (Flash of Unstyled Content) -->
+    <script>
+        (function() {
+            var theme = localStorage.getItem('app_theme') || 'theme-glass-animated'; // Default Theme
+            document.documentElement.classList.add(theme);
+        })();
+    </script>
     <link rel="icon" href="<?php echo $logo_src; ?>" type="image/png">
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -55,18 +101,278 @@ function get_arrow_class($pages, $current) {
             --transition-speed: 0.3s;
             --sidebar-bg: #f8f9fa;
             --primary-color: #0d6efd;
+            --credit-bar-height: 46px; /* Tinggi credit bar bawah */
         }
 
         body {
             font-size: .875rem;
             overflow-x: hidden;
-            background-color: #f4f6f9;
+            background-color: #f4f6f9; /* Default Bright Background */
+            color: #212529;            /* Default Bright Text */
+            transition: background-color 0.4s ease, color 0.4s ease;
+        }
+
+        /* ==========================================================
+           [PREMIUM THEME ENGINE] GLASSMORPHISM STYLES & OVERRIDES 
+           ========================================================== */
+        
+        /* 1. SOLID DARK NAVY THEME */
+        html.theme-glass-solid body {
+            background-color: #0f172a;
+        }
+
+        /* 2. ANIMATED MESH GRADIENT THEME (Futuristic) */
+        html.theme-glass-animated body {
+            background: linear-gradient(-45deg, #0f172a, #2e1065, #1e1b4b, #0f172a, #172554);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+        }
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* Variable Overrides untuk mode Glassmorphism (Solid & Animated) */
+        html.theme-glass-solid body, html.theme-glass-animated body {
+            color: #f8fafc;
+            /* Komponen Base */
+            --card-bg: rgba(30, 41, 59, 0.75);
+            --card-border: rgba(255, 255, 255, 0.1);
+            --glass-blur: blur(12px);
+            /* DataTables Peforma Kejelasan Tinggi */
+            --table-bg: rgba(15, 23, 42, 0.85); 
+            --table-text: #f1f5f9;
+            --table-border: rgba(255, 255, 255, 0.1);
+            /* Navigation */
+            --nav-bg: rgba(15, 23, 42, 0.9);
+            --nav-border: rgba(255, 255, 255, 0.1);
+            --sidebar-hover: rgba(255,255,255,0.05);
+            /* Input / Interactive */
+            --input-bg: rgba(15, 23, 42, 0.9);
+            --input-text: #f8fafc;
+            --input-border: #475569;
+            --primary-light: #38bdf8;
+            --modal-bg: #1e293b;
+        }
+
+        /* Apply Overrides & Blur Effects */
+        html.theme-glass-solid .card, html.theme-glass-animated .card {
+            background: var(--card-bg) !important;
+            border: 1px solid var(--card-border) !important;
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            color: #f8fafc !important;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3) !important;
+        }
+        html.theme-glass-solid .card-header, html.theme-glass-animated .card-header,
+        html.theme-glass-solid .card-footer, html.theme-glass-animated .card-footer {
+            border-color: var(--card-border) !important;
+            background-color: transparent !important;
+        }
+
+        /* Glass Navbar & Sidebar */
+        html.theme-glass-solid .navbar.bg-dark, html.theme-glass-animated .navbar.bg-dark {
+            background-color: var(--nav-bg) !important;
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            border-bottom: 1px solid var(--nav-border) !important;
+        }
+        html.theme-glass-solid .sidebar, html.theme-glass-animated .sidebar {
+            background-color: var(--nav-bg) !important;
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            border-right: 1px solid var(--nav-border) !important;
+        }
+        
+        /* Glass Header Text & Link adjustments */
+        html.theme-glass-solid .nav-link, html.theme-glass-animated .nav-link { color: #cbd5e1; }
+        html.theme-glass-solid .nav-link:hover, html.theme-glass-animated .nav-link:hover { color: var(--primary-light); background-color: var(--sidebar-hover); }
+        html.theme-glass-solid .nav-link.active, html.theme-glass-animated .nav-link.active { 
+            color: var(--primary-light); 
+            background-color: rgba(56, 189, 248, 0.15); 
+            border-left-color: var(--primary-light); 
+        }
+        html.theme-glass-solid .sidebar-group-header, html.theme-glass-animated .sidebar-group-header { color: #cbd5e1; }
+        html.theme-glass-solid .sidebar-group-header:hover, html.theme-glass-animated .sidebar-group-header:hover { color: var(--primary-light); }
+        html.theme-glass-solid .collapse .nav-flex-column, html.theme-glass-animated .collapse .nav-flex-column { background-color: transparent; }
+
+        /* Glass DataTables High Readability Override */
+        html.theme-glass-solid .table, html.theme-glass-animated .table {
+            background-color: var(--table-bg) !important;
+            color: var(--table-text) !important;
+            border-color: var(--table-border) !important;
+        }
+        html.theme-glass-solid th, html.theme-glass-animated th,
+        html.theme-glass-solid td, html.theme-glass-animated td,
+        html.theme-glass-solid tr, html.theme-glass-animated tr {
+            background-color: transparent !important;
+            background: transparent !important;
+            color: var(--table-text) !important;
+            border-bottom-color: var(--table-border) !important;
+        }
+        html.theme-glass-solid .table-hover > tbody > tr:hover > *, html.theme-glass-animated .table-hover > tbody > tr:hover > * {
+            background-color: rgba(255, 255, 255, 0.08) !important;
+            color: #fff !important;
+        }
+        
+        /* DataTables Controls (Length, Filter, Pagination) */
+        html.theme-glass-solid .dataTables_wrapper, html.theme-glass-animated .dataTables_wrapper { color: var(--table-text) !important; }
+        html.theme-glass-solid .dataTables_info, html.theme-glass-animated .dataTables_info,
+        html.theme-glass-solid .dataTables_length, html.theme-glass-animated .dataTables_length,
+        html.theme-glass-solid .dataTables_filter, html.theme-glass-animated .dataTables_filter {
+            color: var(--table-text) !important;
+        }
+        html.theme-glass-solid select, html.theme-glass-animated select,
+        html.theme-glass-solid input, html.theme-glass-animated input {
+            background-color: var(--input-bg);
+            color: var(--input-text);
+            border: 1px solid var(--input-border);
+        }
+        html.theme-glass-solid .form-control:focus, html.theme-glass-animated .form-control:focus,
+        html.theme-glass-solid .form-select:focus, html.theme-glass-animated .form-select:focus {
+            background-color: var(--input-bg);
+            color: var(--input-text);
+            border-color: var(--primary-light);
+            box-shadow: 0 0 0 .25rem rgba(56,189,248,.25);
+        }
+
+        /* Glass Modals */
+        html.theme-glass-solid .modal-content, html.theme-glass-animated .modal-content {
+            background-color: var(--modal-bg);
+            border: 1px solid var(--card-border);
+            color: var(--table-text);
+            backdrop-filter: var(--glass-blur);
+        }
+        html.theme-glass-solid .modal-header, html.theme-glass-animated .modal-header {
+            border-bottom-color: var(--card-border);
+            background-color: #0f172a !important; /* Gelap pekat */
+        }
+        html.theme-glass-solid .modal-footer, html.theme-glass-animated .modal-footer {
+            border-top-color: var(--card-border);
+        }
+
+        /* Glass Accordion */
+        html.theme-glass-solid .accordion-item, html.theme-glass-animated .accordion-item {
+            background-color: var(--card-bg) !important;
+            border-color: var(--card-border) !important;
+            color: var(--table-text) !important;
+        }
+        html.theme-glass-solid .accordion-button, html.theme-glass-animated .accordion-button {
+            background-color: rgba(15, 23, 42, 0.4) !important;
+            color: var(--table-text) !important;
+            box-shadow: none !important;
+        }
+        html.theme-glass-solid .accordion-button:not(.collapsed), html.theme-glass-animated .accordion-button:not(.collapsed) {
+            background-color: rgba(56, 189, 248, 0.15) !important;
+            color: var(--primary-light) !important;
+        }
+        html.theme-glass-solid .accordion-button::after, html.theme-glass-animated .accordion-button::after {
+            filter: brightness(0) invert(1);
+        }
+        html.theme-glass-solid .accordion-body, html.theme-glass-animated .accordion-body {
+            color: var(--table-text) !important;
+            background-color: transparent !important;
+        }
+
+        /* =========================================================
+           [AGGRESSIVE OVERRIDES] Menumpas "White on White" Bug DataTables & Modal
+           ========================================================= */
+        /* 1. Bunuh bg-white dan bg-light bawaan Bootstrap dan custom classes */
+        html.theme-glass-solid .bg-white, html.theme-glass-animated .bg-white,
+        html.theme-glass-solid .bg-light, html.theme-glass-animated .bg-light,
+        html.theme-glass-solid .table-light, html.theme-glass-animated .table-light,
+        html.theme-glass-solid .table-white, html.theme-glass-animated .table-white {
+            background-color: rgba(255,255,255,0.05) !important;
+            color: var(--table-text) !important;
+        }
+
+        /* 2. Atasi Inline Styles Hardcoded (style="background-color: white; / #fff") di Modul */
+        html.theme-glass-solid [style*="background-color: white"], html.theme-glass-animated [style*="background-color: white"],
+        html.theme-glass-solid [style*="background-color: #fff"], html.theme-glass-animated [style*="background-color: #fff"],
+        html.theme-glass-solid [style*="background-color:#fff"], html.theme-glass-animated [style*="background-color:#fff"],
+        html.theme-glass-solid [style*="background: #fff"], html.theme-glass-animated [style*="background: #fff"],
+        html.theme-glass-solid [style*="background: white"], html.theme-glass-animated [style*="background: white"] {
+            background-color: transparent !important;
+            background: transparent !important;
+            color: var(--table-text) !important;
+        }
+
+        /* 3. Paksa modal-body, card-body, dan list-group agar tidak putih solid */
+        html.theme-glass-solid .modal-body, html.theme-glass-animated .modal-body,
+        html.theme-glass-solid .card-body, html.theme-glass-animated .card-body {
+            background-color: transparent !important; 
+        }
+        html.theme-glass-solid .list-group-item, html.theme-glass-animated .list-group-item {
+            background-color: rgba(0,0,0,0.2) !important;
+            border-color: rgba(255,255,255,0.1) !important;
+            color: var(--table-text) !important;
+        }
+
+        /* 4. Menumpas Box/Card membandel di spesifik Laporan (Satu Sehat, Antrol, Audit, Absensi) */
+        html.theme-glass-solid .scorecard, html.theme-glass-animated .scorecard,
+        html.theme-glass-solid .table-container, html.theme-glass-animated .table-container,
+        html.theme-glass-solid .header-rs, html.theme-glass-animated .header-rs,
+        html.theme-glass-solid .filter-box, html.theme-glass-animated .filter-box,
+        html.theme-glass-solid .filter-panel, html.theme-glass-animated .filter-panel,
+        html.theme-glass-solid .glass-card, html.theme-glass-animated .glass-card {
+            background: var(--card-bg) !important;
+            border-color: var(--card-border) !important;
+            color: var(--table-text) !important;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3) !important;
+        }
+        
+        /* Pewarnaan Teks Spesifik di Rangkuman Card Module Laporan */
+        html.theme-glass-solid .scorecard h5, html.theme-glass-animated .scorecard h5,
+        html.theme-glass-solid .scorecard h2, html.theme-glass-animated .scorecard h2,
+        html.theme-glass-solid .filter-box label, html.theme-glass-animated .filter-box label,
+        html.theme-glass-solid .filter-panel label, html.theme-glass-animated .filter-panel label {
+            color: #f8fafc !important;
+        }
+
+        /* Global Text adjustments for Dark Theme */
+        html.theme-glass-solid h1, html.theme-glass-animated h1,
+        html.theme-glass-solid h2, html.theme-glass-animated h2,
+        html.theme-glass-solid h3, html.theme-glass-animated h3,
+        html.theme-glass-solid h4, html.theme-glass-animated h4,
+        html.theme-glass-solid h5, html.theme-glass-animated h5,
+        html.theme-glass-solid h6, html.theme-glass-animated h6,
+        html.theme-glass-solid .text-muted, html.theme-glass-animated .text-muted,
+        html.theme-glass-solid .text-dark, html.theme-glass-animated .text-dark {
+            color: var(--table-text) !important;
+        }
+        
+        html.theme-glass-solid .alert-info, html.theme-glass-animated .alert-info {
+            background-color: rgba(13, 202, 240, 0.1) !important;
+            color: #bae6fd !important;
+            border: 1px solid rgba(13, 202, 240, 0.2) !important;
+        }
+
+        /* Glass Footer Overrides */
+        html.theme-glass-solid #dev-credit-bar {
+            background: rgba(15, 23, 42, 0.95);
+            border-top: 1px solid rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.3);
+        }
+        html.theme-glass-animated #dev-credit-bar {
+            background: linear-gradient(90deg, #0f0c29, #302b63, #24243e);
+            border-top: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.3);
+        }
+        html.theme-glass-solid .dev-credit-brand .dev-name, html.theme-glass-animated .dev-credit-brand .dev-name { color: #fff; }
+        html.theme-glass-solid .dev-credit-brand .dev-role, html.theme-glass-animated .dev-credit-brand .dev-role { color: rgba(255,255,255,0.5) !important; }
+        html.theme-glass-solid .dev-divider, html.theme-glass-animated .dev-divider { background: rgba(255,255,255,0.15); }
+        html.theme-glass-solid .dev-link-btn-neutral, html.theme-glass-animated .dev-link-btn-neutral {
+            background: rgba(255,255,255,0.1) !important;
+            border-color: rgba(255,255,255,0.2) !important;
+            color: #fff !important;
         }
 
         /* --- NAVBAR (FIXED TOP) --- */
         .navbar {
             height: var(--header-height);
-            z-index: 1030; /* Di atas sidebar */
+            z-index: 1030;
         }
         .navbar-brand {
             padding-top: .75rem;
@@ -86,8 +392,8 @@ function get_arrow_class($pages, $current) {
             top: 0;
             bottom: 0;
             left: 0;
-            z-index: 1000; /* Di bawah navbar */
-            padding-top: var(--header-height); 
+            z-index: 1000;
+            padding-top: var(--header-height);
             width: var(--sidebar-width);
             background-color: var(--sidebar-bg);
             border-right: 1px solid #dee2e6;
@@ -97,34 +403,26 @@ function get_arrow_class($pages, $current) {
 
         /* --- MAIN CONTENT (DYNAMIC WIDTH) --- */
         main {
-            display: block; 
-            width: auto; 
-            margin-left: var(--sidebar-width); 
+            display: block;
+            width: auto;
+            margin-left: var(--sidebar-width);
             padding: 20px;
+            /* Tambahkan padding bawah agar konten tidak tertutup credit bar */
+            padding-bottom: calc(var(--credit-bar-height) + 20px);
             min-height: calc(100vh - var(--header-height));
             transition: margin-left var(--transition-speed) ease-in-out;
         }
 
         /* --- LOGIKA TOGGLE DESKTOP --- */
-        body.sidebar-closed .sidebar {
-            transform: translateX(-100%); 
-        }
-        body.sidebar-closed main {
-            margin-left: 0; 
-        }
+        body.sidebar-closed .sidebar { transform: translateX(-100%); }
+        body.sidebar-closed main    { margin-left: 0; }
 
         /* --- LOGIKA TOGGLE MOBILE --- */
         @media (max-width: 767.98px) {
             .sidebar { transform: translateX(-100%); }
             main { margin-left: 0; }
-
             body.sidebar-open .sidebar { transform: translateX(0); box-shadow: 0 0 15px rgba(0,0,0,0.2); }
-            
-            .sidebar-overlay {
-                display: none;
-                position: fixed; inset: 0;
-                background: rgba(0,0,0,0.5); z-index: 999;
-            }
+            .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 999; }
             body.sidebar-open .sidebar-overlay { display: block; }
         }
 
@@ -159,33 +457,190 @@ function get_arrow_class($pages, $current) {
             box-shadow: 0 8px 32px rgba(0,0,0,0.12);
             border: 1px solid #e9ecef;
         }
-        #globalLoadingOverlay .spinner-border {
-            width: 3rem;
-            height: 3rem;
-            border-width: 0.3em;
-        }
-        #globalLoadingOverlay .loading-text {
-            margin-top: 16px;
-            font-size: 0.95rem;
-            font-weight: 600;
-            color: #495057;
-            margin-bottom: 0;
-        }
-        #globalLoadingOverlay .loading-subtext {
-            font-size: 0.8rem;
-            color: #adb5bd;
-            margin-top: 4px;
-        }
+        #globalLoadingOverlay .spinner-border { width: 3rem; height: 3rem; border-width: 0.3em; }
+        #globalLoadingOverlay .loading-text { margin-top: 16px; font-size: 0.95rem; font-weight: 600; color: #495057; margin-bottom: 0; }
+        #globalLoadingOverlay .loading-subtext { font-size: 0.8rem; color: #adb5bd; margin-top: 4px; }
         @keyframes dotsAnim {
             0%   { content: ''; }
             33%  { content: '.'; }
             66%  { content: '..'; }
             100% { content: '...'; }
         }
-        #globalLoadingOverlay .dots::after {
-            content: '';
-            display: inline-block;
-            animation: dotsAnim 1.2s steps(1, end) infinite;
+        #globalLoadingOverlay .dots::after { content: ''; display: inline-block; animation: dotsAnim 1.2s steps(1, end) infinite; }
+
+        /* ========== DEVELOPER CREDIT BAR (ANTI-TAMPERING COMPONENT) ========== */
+        #dev-credit-bar {
+            position: fixed;
+            bottom: 0;
+            left: var(--sidebar-width);
+            right: 0;
+            height: var(--credit-bar-height);
+            z-index: 1025;
+            background: #ffffff;
+            border-top: 1px solid #dee2e6;
+            display: flex;
+            align-items: center;
+            padding: 0 16px;
+            gap: 12px;
+            transition: left var(--transition-speed) ease-in-out;
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.3);
+        }
+        /* Sesuaikan posisi saat sidebar ditutup */
+        body.sidebar-closed #dev-credit-bar { left: 0; }
+
+        @media (max-width: 767.98px) {
+            #dev-credit-bar { left: 0; }
+        }
+
+        .dev-credit-brand {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+        .dev-credit-brand .dev-avatar {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #4facfe, #00f2fe);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            font-weight: 700;
+            color: #0a0a1a;
+            flex-shrink: 0;
+        }
+        .dev-credit-brand .dev-name {
+            font-size: 0.78rem;
+            font-weight: 700;
+            color: #212529;
+            white-space: nowrap;
+        }
+        .dev-credit-brand .dev-role {
+            font-size: 0.65rem;
+            color: #6c757d;
+            white-space: nowrap;
+        }
+
+        .dev-divider {
+            width: 1px;
+            height: 24px;
+            background: #dee2e6;
+            flex-shrink: 0;
+        }
+
+        .dev-links {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex: 1;
+        }
+        .dev-link-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.72rem;
+            font-weight: 600;
+            text-decoration: none !important;
+            transition: all 0.2s;
+            white-space: nowrap;
+            border: 1px solid transparent;
+        }
+        .dev-link-btn-neutral {
+            color: #495057 !important;
+            background: rgba(0,0,0,0.05);
+            border-color: transparent;
+        }
+        .dev-link-btn:hover { transform: translateY(-1px); }
+
+        .dev-link-saweria {
+            background: linear-gradient(135deg, #ff6b6b, #ffa500);
+            color: #fff !important;
+        }
+        .dev-link-saweria:hover {
+            box-shadow: 0 4px 12px rgba(255, 107, 107, 0.5);
+            color: #fff !important;
+        }
+
+        .dev-link-wa {
+            background: rgba(37, 211, 102, 0.15);
+            border-color: rgba(37, 211, 102, 0.4);
+            color: #25d366 !important;
+        }
+        .dev-link-wa:hover {
+            background: rgba(37, 211, 102, 0.25);
+            color: #25d366 !important;
+        }
+
+        .dev-link-tg {
+            background: rgba(0, 136, 204, 0.15);
+            border-color: rgba(0, 136, 204, 0.4);
+            color: #0088cc !important;
+        }
+        .dev-link-tg:hover {
+            background: rgba(0, 136, 204, 0.25);
+            color: #0088cc !important;
+        }
+
+        /* QRIS Thumbnail — WAJIB SELALU TERLIHAT (dipakai kill switch client-side) */
+        .dev-qris-wrap {
+            position: relative;
+            flex-shrink: 0;
+            cursor: pointer;
+        }
+        .dev-qris-wrap img {
+            width: 34px;
+            height: 34px;
+            border-radius: 6px;
+            object-fit: cover;
+            border: 2px solid rgba(255,255,255,0.3);
+            transition: all 0.2s;
+        }
+        .dev-qris-wrap:hover img {
+            transform: scale(1.1);
+            border-color: rgba(255,255,255,0.7);
+        }
+        .dev-qris-wrap .qris-tooltip {
+            position: absolute;
+            bottom: 44px;
+            right: 0;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+            padding: 12px;
+            width: 180px;
+            text-align: center;
+            display: none;
+            z-index: 99999;
+        }
+        .dev-qris-wrap .qris-tooltip img {
+            width: 156px;
+            height: 156px;
+            border: none;
+            border-radius: 8px;
+        }
+        .dev-qris-wrap .qris-tooltip p {
+            font-size: 0.72rem;
+            color: #444;
+            margin: 8px 0 0;
+            font-weight: 600;
+        }
+        .dev-qris-wrap:hover .qris-tooltip,
+        .dev-qris-wrap:focus-within .qris-tooltip { display: block; }
+        .dev-qris-wrap .qris-label {
+            font-size: 0.6rem;
+            color: rgba(255,255,255,0.5);
+            text-align: center;
+            margin-top: 2px;
+        }
+
+        /* Hide text on mobile — hanya tampilkan icon */
+        @media (max-width: 575.98px) {
+            .dev-link-btn span { display: none; }
+            .dev-credit-brand .dev-role { display: none; }
         }
     </style>
 </head>
@@ -208,18 +663,58 @@ function get_arrow_class($pages, $current) {
       <img src="<?php echo $logo_src; ?>" alt="Logo" width="25" height="25" class="d-inline-block align-text-top me-2">
       <?php echo $nama_instansi; ?>
   </a>
-  
+
   <button class="btn btn-link text-white d-none d-md-block ms-2" id="sidebarToggleDesktop">
       <i class="fas fa-bars fa-lg"></i>
   </button>
-  
+
   <button class="navbar-toggler position-absolute d-md-none collapsed" type="button" id="sidebarToggleMobile" style="right: 10px; top: 15px;">
     <span class="navbar-toggler-icon"></span>
   </button>
-  
+
   <div class="w-100"></div>
-  
-  <div class="navbar-nav d-flex flex-row">
+
+  <div class="navbar-nav d-flex flex-row align-items-center">
+    
+    <!-- [THEME ENGINE] Dropdown Switcher Tema -->
+    <div class="nav-item dropdown me-2">
+      <a class="nav-link dropdown-toggle text-warning" href="#" id="themeDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Ganti Tema">
+        <i class="fas fa-palette"></i>
+      </a>
+      <ul class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="themeDropdown" style="font-size: 0.85rem; min-width: 200px;">
+        <li><h6 class="dropdown-header">Pilih Tema Aplikasi</h6></li>
+        <li><a class="dropdown-item theme-selector" href="#" data-theme="theme-light"><i class="fas fa-sun me-2 text-warning"></i> Terang</a></li>
+        <li><a class="dropdown-item theme-selector" href="#" data-theme="theme-glass-solid"><i class="fas fa-moon me-2 text-secondary"></i> Gelap</a></li>
+        <li><a class="dropdown-item theme-selector" href="#" data-theme="theme-glass-animated"><i class="fas fa-meteor me-2 text-primary"></i> Glass</a></li>
+      </ul>
+    </div>
+
+    <!-- Script Logika Ganti Tema + Reload DataTables/Charts otomatis -->
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+          const themeSelectors = document.querySelectorAll('.theme-selector');
+          themeSelectors.forEach(function(item) {
+              item.addEventListener('click', function(e) {
+                  e.preventDefault();
+                  const selectedTheme = this.getAttribute('data-theme');
+                  const currentTheme = localStorage.getItem('app_theme') || 'theme-glass-animated';
+                  
+                  if (selectedTheme !== currentTheme) {
+                      // Hapus tema lama, tambahkan tema baru ke tag <html>
+                      document.documentElement.classList.remove('theme-light', 'theme-glass-solid', 'theme-glass-animated');
+                      document.documentElement.classList.add(selectedTheme);
+                      
+                      // Simpan ke LocalStorage
+                      localStorage.setItem('app_theme', selectedTheme);
+                      
+                      // Beritahu sistem tentang perubahan (misal untuk redraw Chart)
+                      window.dispatchEvent(new Event('themeChanged'));
+                  }
+              });
+          });
+      });
+    </script>
+
     <div class="nav-item text-nowrap">
       <span class="nav-link px-3 text-white small">Halo, <?php echo htmlspecialchars($_SESSION['nama_user']); ?></span>
     </div>
@@ -233,19 +728,15 @@ function get_arrow_class($pages, $current) {
 
 <nav id="sidebarMenu" class="sidebar">
   <div class="pt-3 pb-5">
-
-    <!-- CHANGE LOG BUTTON START -->
-    <div class="px-3 mb-3 text-center">
-        <button type="button" class="btn btn-sm btn-primary w-100 shadow-sm" data-bs-toggle="modal" data-bs-target="#changelogModal">
-            <i class="fas fa-history me-1"></i> Log Pengembangan
-        </button>
-    </div>
-    <!-- CHANGE LOG BUTTON END -->
-
     <ul class="nav flex-column mb-2">
       <li class="nav-item">
         <a class="nav-link <?php echo is_active('dashboard.php', $current_page); ?>" href="dashboard.php">
           <i class="fas fa-home me-2 text-primary" style="width: 20px;"></i> Dashboard Utama
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#guideModal">
+          <i class="fas fa-book-reader me-2 text-info" style="width: 20px;"></i> Panduan Pengguna
         </a>
       </li>
     </ul>
@@ -262,7 +753,6 @@ function get_arrow_class($pages, $current) {
     // LOOPING MENU DARI JSON
     if (!empty($sidebar_menus)) {
         foreach ($sidebar_menus as $menu) {
-            // Lewati jika grup/menu diset tidak aktif (is_active = false)
             if (isset($menu['is_active']) && $menu['is_active'] === false) {
                 continue;
             }
@@ -270,8 +760,7 @@ function get_arrow_class($pages, $current) {
             if (isset($menu['is_group']) && $menu['is_group']) {
                 $group_id = $menu['id'];
                 $group_title = $menu['title'];
-                
-                // Kumpulkan semua URL dari item dalam grup ini untuk fungsi collapse/active
+
                 $group_urls = [];
                 if (isset($menu['items']) && is_array($menu['items'])) {
                     foreach ($menu['items'] as $item) {
@@ -289,7 +778,6 @@ function get_arrow_class($pages, $current) {
                         <?php
                         if (isset($menu['items']) && is_array($menu['items'])) {
                             foreach ($menu['items'] as $item) {
-                                // Lewati substem jika diset tidak aktif
                                 if (isset($item['is_active']) && $item['is_active'] === false) {
                                     continue;
                                 }
@@ -307,7 +795,6 @@ function get_arrow_class($pages, $current) {
                 </div>
                 <?php
             } else {
-                // Untuk menu single (jika ada selain dashboard, meskipun dashboard diatas sudah hardcoded)
                 ?>
                 <ul class="nav flex-column mb-2">
                     <li class="nav-item">
@@ -334,10 +821,11 @@ function get_arrow_class($pages, $current) {
 		</ul>
 	</div>
 	<?php } ?>
-	
+
     <br><br>
   </div>
 </nav>
+
 
 <!-- Modal Changelog -->
 <div class="modal fade" id="changelogModal" tabindex="-1" aria-labelledby="changelogModalLabel" aria-hidden="true">
@@ -362,7 +850,6 @@ function get_arrow_class($pages, $current) {
 </div>
 
 <style>
-/* CSS Tambahan khusus untuk Timeline Modal */
 .timeline { position: relative; padding: 1rem 0; margin: 0; }
 .timeline::before { content: ''; position: absolute; top: 0; bottom: 0; left: 20px; width: 2px; background: #dee2e6; }
 .timeline-item { position: relative; margin-bottom: 2rem; padding-left: 50px; }
@@ -379,7 +866,6 @@ document.addEventListener("DOMContentLoaded", function() {
         changelogModal.addEventListener('show.bs.modal', function () {
             const container = document.getElementById('changelog-container');
             if (container.dataset.loaded === 'true') return;
-            
             fetch('change_log.md?v=' + new Date().getTime())
               .then(response => {
                   if(!response.ok) throw new Error("Gagal memuat log");
@@ -387,54 +873,33 @@ document.addEventListener("DOMContentLoaded", function() {
               })
               .then(text => {
                  const regex = /## \s*\[([^\]]+)\]\s*—\s*([^\n]+)\s+###\s*([^\n]+)\s+((?:-[^\n]+\s*)+)/g;
-                 let matches = [];
-                 let match;
-                 while ((match = regex.exec(text)) !== null) {
-                     matches.push(match);
-                 }
-                 
+                 let matches = [], match;
+                 while ((match = regex.exec(text)) !== null) matches.push(match);
                  if (matches.length === 0) {
-                     container.innerHTML = '<div class="alert alert-warning">Belum ada catatan changelog dengan format yang sesuai.</div>';
+                     container.innerHTML = '<div class="alert alert-warning">Belum ada catatan changelog.</div>';
                      return;
                  }
-                 
-                 matches.reverse(); 
-                 
+                 matches.reverse();
                  let html = '';
                  matches.forEach(m => {
-                      let version = m[1];
-                      let date = m[2].trim();
-                      let types = m[3].trim();
-                      let itemsText = m[4].trim();
-                      
+                      let version = m[1], date = m[2].trim(), types = m[3].trim(), itemsText = m[4].trim();
                       let itemsHtml = itemsText.split('\n').filter(i => i.trim() !== '').map(i => {
                           let t = i.trim();
                           if (t.startsWith('-')) t = t.substring(1).trim();
-                          t = t.replace(/\*\*([^\*]+)\*\*/g, '<strong>$1</strong>');
+                          t = t.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
                           return '<li class="mb-1">' + t + '</li>';
                       }).join('');
-                      
-                      html += `
-                      <div class="timeline-item">
-                         <span class="timeline-date"><i class="far fa-clock me-1"></i> ${date}</span>
-                         <div class="timeline-content shadow-sm">
-                             <h5><span class="badge bg-primary me-2">${version}</span> <small class="text-muted" style="font-size: 0.8rem;">${types}</small></h5>
-                             <ul class="mb-0 mt-3 ps-3" style="font-size: 0.9rem; color: #495057;">
-                                 ${itemsHtml}
-                             </ul>
-                         </div>
-                      </div>`;
+                      html += `<div class="timeline-item"><span class="timeline-date"><i class="far fa-clock me-1"></i> ${date}</span><div class="timeline-content shadow-sm"><h5><span class="badge bg-primary me-2">${version}</span> <small class="text-muted" style="font-size:0.8rem;">${types}</small></h5><ul class="mb-0 mt-3 ps-3" style="font-size:0.9rem;color:#495057;">${itemsHtml}</ul></div></div>`;
                  });
                  container.innerHTML = html;
                  container.dataset.loaded = 'true';
               })
-              .catch(err => {
-                  container.innerHTML = `<div class="alert alert-danger"><i class="fas fa-exclamation-triangle me-2"></i> ${err.message}</div>`;
-              });
+              .catch(err => { container.innerHTML = `<div class="alert alert-danger"><i class="fas fa-exclamation-triangle me-2"></i>${err.message}</div>`; });
         });
     }
 });
-</script>
+
+
 
 <main>
     <div class="container-fluid">
@@ -444,36 +909,27 @@ document.addEventListener("DOMContentLoaded", function() {
     document.addEventListener("DOMContentLoaded", function() {
         const body = document.body;
         const toggleDesktop = document.getElementById('sidebarToggleDesktop');
-        const toggleMobile = document.getElementById('sidebarToggleMobile');
-        const overlay = document.getElementById('mobileOverlay');
+        const toggleMobile  = document.getElementById('sidebarToggleMobile');
+        const overlay       = document.getElementById('mobileOverlay');
 
-        // 1. Cek Preferensi User (LocalStorage)
         const savedState = localStorage.getItem('sidebarState');
         if (savedState === 'closed') {
             body.classList.add('sidebar-closed');
         }
 
-        // 2. Toggle Desktop
         if(toggleDesktop) {
             toggleDesktop.addEventListener('click', function() {
                 body.classList.toggle('sidebar-closed');
-                // Simpan state
-                if (body.classList.contains('sidebar-closed')) {
-                    localStorage.setItem('sidebarState', 'closed');
-                } else {
-                    localStorage.setItem('sidebarState', 'open');
-                }
+                localStorage.setItem('sidebarState', body.classList.contains('sidebar-closed') ? 'closed' : 'open');
             });
         }
 
-        // 3. Toggle Mobile
         if(toggleMobile) {
             toggleMobile.addEventListener('click', function() {
                 body.classList.toggle('sidebar-open');
             });
         }
 
-        // 4. Tutup Sidebar Mobile saat klik overlay
         if(overlay) {
             overlay.addEventListener('click', function() {
                 body.classList.remove('sidebar-open');

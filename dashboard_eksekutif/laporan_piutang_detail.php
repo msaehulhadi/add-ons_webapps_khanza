@@ -30,25 +30,14 @@ $sql_ralan = "
     SELECT 
         reg_periksa.no_rawat, nota_jalan.no_nota, pasien.nm_pasien, 
         nota_jalan.tanggal, nota_jalan.jam, dokter.nm_dokter, penjab.png_jawab,
-        (SELECT SUM(
-            CASE 
-                WHEN billing.status = 'TtlRetur Obat' THEN (billing.totalbiaya * -1)
-                WHEN billing.status = 'TtlPotongan' THEN (billing.totalbiaya * -1)
-                ELSE billing.totalbiaya 
-            END
-				) 
-			FROM billing 
-			WHERE billing.no_rawat = reg_periksa.no_rawat
-				) AS total_rupiah
+        piutang_pasien.totalpiutang AS total_rupiah
     FROM reg_periksa 
     INNER JOIN pasien ON reg_periksa.no_rkm_medis = pasien.no_rkm_medis 
     INNER JOIN penjab ON reg_periksa.kd_pj = penjab.kd_pj 
     INNER JOIN dokter ON reg_periksa.kd_dokter = dokter.kd_dokter 
     INNER JOIN nota_jalan ON reg_periksa.no_rawat = nota_jalan.no_rawat 
+    INNER JOIN piutang_pasien ON reg_periksa.no_rawat = piutang_pasien.no_rawat
     WHERE reg_periksa.status_lanjut = 'Ralan' 
-        AND reg_periksa.no_rawat IN (
-            SELECT piutang_pasien.no_rawat FROM piutang_pasien WHERE piutang_pasien.no_rawat = reg_periksa.no_rawat
-        ) 
         AND CONCAT(nota_jalan.tanggal, ' ', nota_jalan.jam) BETWEEN ? AND ? 
     ORDER BY nota_jalan.tanggal, nota_jalan.jam
 ";
@@ -59,16 +48,7 @@ $sql_ranap = "
     SELECT 
         reg_periksa.no_rawat, nota_inap.no_nota, pasien.nm_pasien, 
         nota_inap.tanggal, nota_inap.jam, penjab.png_jawab,
-        (SELECT SUM(
-            CASE 
-                WHEN billing.status = 'TtlRetur Obat' THEN (billing.totalbiaya * -1)
-                WHEN billing.status = 'TtlPotongan' THEN (billing.totalbiaya * -1)
-                ELSE billing.totalbiaya 
-            END
-				) 
-			FROM billing 
-			WHERE billing.no_rawat = reg_periksa.no_rawat
-				) AS total_rupiah,
+        piutang_pasien.totalpiutang AS total_rupiah,
         COALESCE(
             (SELECT dokter.nm_dokter 
              FROM dpjp_ranap 
@@ -83,10 +63,8 @@ $sql_ranap = "
     INNER JOIN pasien ON reg_periksa.no_rkm_medis = pasien.no_rkm_medis 
     INNER JOIN penjab ON reg_periksa.kd_pj = penjab.kd_pj 
     INNER JOIN nota_inap ON reg_periksa.no_rawat = nota_inap.no_rawat 
+    INNER JOIN piutang_pasien ON reg_periksa.no_rawat = piutang_pasien.no_rawat
     WHERE reg_periksa.status_lanjut = 'Ranap' 
-        AND reg_periksa.no_rawat IN (
-            SELECT piutang_pasien.no_rawat FROM piutang_pasien WHERE piutang_pasien.no_rawat = reg_periksa.no_rawat
-        ) 
         AND CONCAT(nota_inap.tanggal, ' ', nota_inap.jam) BETWEEN ? AND ? 
     ORDER BY nota_inap.tanggal, nota_inap.jam
 ";
@@ -105,39 +83,21 @@ if (!$stmt_ralan || !$stmt_ranap || !$stmt_pemasukan || !$stmt_pengeluaran) {
 
 // --- KUERI AGREGAT HARIAN UNTUK SUMMARY ---
 $sql_sum_ralan = "
-    SELECT SUM(
-        CASE 
-            WHEN billing.status = 'TtlRetur Obat' THEN (billing.totalbiaya * -1)
-            WHEN billing.status = 'TtlPotongan' THEN (billing.totalbiaya * -1)
-            ELSE billing.totalbiaya 
-        END
-    ) AS total_harian
+    SELECT SUM(piutang_pasien.totalpiutang) AS total_harian
     FROM reg_periksa 
     INNER JOIN nota_jalan ON reg_periksa.no_rawat = nota_jalan.no_rawat 
-    LEFT JOIN billing ON billing.no_rawat = reg_periksa.no_rawat
+    INNER JOIN piutang_pasien ON reg_periksa.no_rawat = piutang_pasien.no_rawat
     WHERE reg_periksa.status_lanjut = 'Ralan' 
-        AND reg_periksa.no_rawat IN (
-            SELECT piutang_pasien.no_rawat FROM piutang_pasien WHERE piutang_pasien.no_rawat = reg_periksa.no_rawat
-        ) 
         AND nota_jalan.tanggal = ?
 ";
 $stmt_sum_ralan = $koneksi->prepare($sql_sum_ralan);
 
 $sql_sum_ranap = "
-    SELECT SUM(
-        CASE 
-            WHEN billing.status = 'TtlRetur Obat' THEN (billing.totalbiaya * -1)
-            WHEN billing.status = 'TtlPotongan' THEN (billing.totalbiaya * -1)
-            ELSE billing.totalbiaya 
-        END
-    ) AS total_harian
+    SELECT SUM(piutang_pasien.totalpiutang) AS total_harian
     FROM reg_periksa 
     INNER JOIN nota_inap ON reg_periksa.no_rawat = nota_inap.no_rawat 
-    LEFT JOIN billing ON billing.no_rawat = reg_periksa.no_rawat
+    INNER JOIN piutang_pasien ON reg_periksa.no_rawat = piutang_pasien.no_rawat
     WHERE reg_periksa.status_lanjut = 'Ranap' 
-        AND reg_periksa.no_rawat IN (
-            SELECT piutang_pasien.no_rawat FROM piutang_pasien WHERE piutang_pasien.no_rawat = reg_periksa.no_rawat
-        ) 
         AND nota_inap.tanggal = ?
 ";
 $stmt_sum_ranap = $koneksi->prepare($sql_sum_ranap);
@@ -564,21 +524,25 @@ $date_range = new DatePeriod($start_date, $interval, $end_date);
                             var no = item.no || '';
                             var nm_perawatan = item.nm_perawatan || 'N/A';
                             var status = item.status || 'N/A';
-                            var biaya = parseFloat(item.biaya) || 0;
-                            var jumlah = parseFloat(item.jumlah) || 0;
-                            var totalbiaya = parseFloat(item.totalbiaya) || 0;
+                            
+                            // Clean up zero values untuk mereduksi visual clutter
+                            var biayaText = parseFloat(item.biaya) > 0 ? formatRupiah(item.biaya) : '';
+                            var jumlahText = parseFloat(item.jumlah) > 0 ? parseFloat(item.jumlah) : '';
+                            var totalbiayaText = parseFloat(item.totalbiaya) !== 0 ? formatRupiah(item.totalbiaya) : '';
+                            var statusText = (status === '-' || status === '') ? '' : status;
 
                             html += '<tr>';
                             html += '<td>' + (no || '') + '</td>';
                             html += '<td>' + (nm_perawatan) + '</td>';
-                            html += '<td>' + (status) + '</td>';
-                            html += '<td class="text-end">' + (biaya > 0 ? formatRupiah(biaya) : 'Rp 0') + '</td>';
-                            html += '<td class="text-center">' + (jumlah > 0 ? jumlah : '0') + '</td>';
-                            html += '<td class="text-end">' + (totalbiaya > 0 ? formatRupiah(totalbiaya) : 'Rp 0') + '</td>';
+                            html += '<td>' + (statusText) + '</td>';
+                            html += '<td class="text-end">' + (biayaText) + '</td>';
+                            html += '<td class="text-center">' + (jumlahText) + '</td>';
+                            html += '<td class="text-end">' + (totalbiayaText) + '</td>';
                             html += '</tr>';
                             
+                            var totalbiayaNum = parseFloat(item.totalbiaya) || 0;
                             if (status !== '' && status !== '-') {
-                                grandTotal += totalbiaya;
+                                grandTotal += totalbiayaNum;
                             }
                         });
                     } else {

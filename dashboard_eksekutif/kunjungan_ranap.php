@@ -8,6 +8,29 @@ require_once('includes/header.php');
 ?>
 
 <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.bootstrap5.min.css">
+<style>
+/* === SKELETON LOADER LAZY BILLING === */
+.skeleton-text {
+    display: inline-block;
+    width: 90px;
+    height: 14px;
+    background: linear-gradient(90deg, #e0e0e0 25%, #f5f5f5 50%, #e0e0e0 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.4s infinite;
+    border-radius: 4px;
+    vertical-align: middle;
+}
+@keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+}
+html.theme-glass-solid .skeleton-text,
+html.theme-glass-animated .skeleton-text {
+    background: linear-gradient(90deg, rgba(255,255,255,0.1) 25%, rgba(255,255,255,0.25) 50%, rgba(255,255,255,0.1) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.4s infinite;
+}
+</style>
 
 <div class="container-fluid">
     
@@ -140,6 +163,7 @@ require_once('includes/header.php');
             "ajax": {
                 "url": "api/data_kunjungan_ranap.php",
                 "type": "GET",
+                "global": false, // Hilangkan loading pop-up agar nyaman saat mengetik/search
                 "data": function(d) {
                     // KIRIM PARAMETER FILTER
                     d.mode = $('#chk_audit').is(':checked') ? 'audit' : 'active';
@@ -206,10 +230,9 @@ require_once('includes/header.php');
                 { 
                     "data": "dpjp",
                     "render": function(data, type, row) {
+                        if (data === null || data === '') return `<span class="skeleton-cell" data-norawat="${row.no_rawat}" data-col="dpjp"><span class="skeleton-text" style="width:100px"></span></span>`;
                         let html = `<b>${data}</b>`;
-                        if (row.is_dpjp_fallback) {
-                            html += `<br><small class="badge bg-warning text-dark" style="font-size: 0.7em;">DPJP -</small>`;
-                        }
+                        if (row.is_dpjp_fallback) html += `<br><small class="badge bg-warning text-dark" style="font-size:0.7em;">DPJP -</small>`;
                         return html;
                     }
                 },
@@ -219,22 +242,35 @@ require_once('includes/header.php');
                         let penjamin = data.penjamin.toLowerCase();
                         let badgeClass = 'bg-secondary';
                         let badgeStyle = '';
-
                         if (penjamin.includes('bpjs')) { badgeClass = 'bg-success'; } 
                         else if (penjamin.includes('umum')) { badgeClass = 'bg-primary'; } 
                         else if (penjamin.includes('asuransi') || penjamin.includes('inhealth')) { 
                             badgeClass = ''; badgeStyle = 'background-color: #e83e8c; color: white;'; 
                         }
-
                         return `${data.kamar}<br><span class="badge ${badgeClass}" style="${badgeStyle} border: 1px solid #ddd;">${data.penjamin}</span>`;
                     }
                 },
-                { "data": "plafon", "className": "text-end fw-bold", "defaultContent": "-" },
-                { "data": "estimasi", "className": "text-end fw-bold text-primary" },
+                { 
+                    "data": "plafon", 
+                    "className": "text-end fw-bold",
+                    "render": function(data, type, row) {
+                        if (data === null) return `<span class="skeleton-cell" data-norawat="${row.no_rawat}" data-col="plafon"><span class="skeleton-text"></span></span>`;
+                        return data;
+                    }
+                },
+                { 
+                    "data": "estimasi", 
+                    "className": "text-end fw-bold text-primary",
+                    "render": function(data, type, row) {
+                        if (data === null) return `<span class="skeleton-cell" data-norawat="${row.no_rawat}" data-col="estimasi"><span class="skeleton-text"></span></span>`;
+                        return data;
+                    }
+                },
                 { 
                     "data": "selisih", 
                     "className": "text-end fw-bold",
                     "render": function(data, type, row) {
+                        if (data === null) return `<span class="skeleton-cell" data-norawat="${row.no_rawat}" data-col="selisih"><span class="skeleton-text"></span></span>`;
                         if (!data || data === '-') return '-';
                         return (row.is_over) ? `<span class="text-danger">(${data})</span>` : `<span class="text-success">+${data}</span>`;
                     }
@@ -253,17 +289,101 @@ require_once('includes/header.php');
                     "data": null, "className": "text-center", 
                     "render": function(data, type, row) {
                         return `<button class="btn btn-sm btn-primary shadow-sm" 
-                                onclick="showDetailBilling('${row.no_rawat}', '${row.pasien.replace(/'/g, "\\'")}')" 
+                                onclick="showDetailBilling('${row.no_rawat}', '${row.pasien.replace(/'/g, "\\'")}')"
                                 title="Lihat Rincian Lengkap">
                                 <i class="fas fa-list-ul"></i>
                                 </button>`;
                     }
                 }
-            ]
+            ],
+            "drawCallback": function() {
+                loadBillingAsync();
+            }
         });
     });
 
     function reloadTable() { tableKunjungan.ajax.reload(); }
+
+    // =====================================================
+    // LAZY BILLING LOADER — Fetch biaya async per baris (Ranap)
+    // =====================================================
+    var _billingQueue = [];
+    var _billingRunning = 0;
+    var _billingConcurrency = 3;
+
+    function loadBillingAsync() {
+        var cells = document.querySelectorAll('.skeleton-cell');
+        _billingQueue = [];
+        cells.forEach(function(el) {
+            var noRawat = el.getAttribute('data-norawat');
+            if (!_billingQueue.some(function(i){ return i.no_rawat === noRawat; })) {
+                // Ambil kd_pj dari data baris di DataTable
+                var rowData = tableKunjungan.rows().data().toArray().find(function(r){ return r.no_rawat === noRawat; });
+                _billingQueue.push({ no_rawat: noRawat, kd_pj: rowData ? (rowData.kd_pj || '-') : '-' });
+            }
+        });
+        _processBillingQueue();
+    }
+
+    function _processBillingQueue() {
+        while (_billingRunning < _billingConcurrency && _billingQueue.length > 0) {
+            var item = _billingQueue.shift();
+            _billingRunning++;
+            _fetchOneBilling(item);
+        }
+    }
+
+    function _fetchOneBilling(item) {
+        $.ajax({
+            url: 'api/hitung_estimasi_ranap.php',
+            type: 'GET',
+            global: false,  // Jangan trigger globalLoadingOverlay
+            data: { no_rawat: item.no_rawat, kd_pj: item.kd_pj },
+            dataType: 'json',
+            success: function(res) {
+                var nr = res.no_rawat;
+                // Estimasi
+                document.querySelectorAll('.skeleton-cell[data-norawat="' + nr + '"][data-col="estimasi"]').forEach(function(el) {
+                    el.outerHTML = '<span class="fw-bold text-primary">Rp ' + (res.estimasi || '0') + '</span>';
+                });
+                // Plafon
+                document.querySelectorAll('.skeleton-cell[data-norawat="' + nr + '"][data-col="plafon"]').forEach(function(el) {
+                    el.outerHTML = res.plafon || '-';
+                });
+                // Selisih + Progress Bar
+                document.querySelectorAll('.skeleton-cell[data-norawat="' + nr + '"][data-col="selisih"]').forEach(function(el) {
+                    var html = '-';
+                    if (res.has_plafon) {
+                        var barColor = res.is_over ? 'bg-danger' : (res.pct >= 80 ? 'bg-warning' : 'bg-success');
+                        var selLabel = res.is_over
+                            ? '<span class="text-danger fw-bold">+' + res.selisih + ' (OVER)</span>'
+                            : '<span class="text-success fw-bold">Sisa: ' + res.selisih + '</span>';
+                        html = selLabel +
+                               '<div class="progress mt-1" style="height:5px;" title="' + res.pct + '% dari plafon">' +
+                               '  <div class="progress-bar ' + barColor + '" style="width:' + res.pct + '%;"></div>' +
+                               '</div>' +
+                               '<small class="text-muted" style="font-size:0.68rem;">' + res.pct + '% terpakai</small>';
+                    }
+                    el.outerHTML = html;
+                });
+                // DPJP
+                document.querySelectorAll('.skeleton-cell[data-norawat="' + nr + '"][data-col="dpjp"]').forEach(function(el) {
+                    var dpjpHtml = '<b>' + (res.dpjp || '-') + '</b>';
+                    if (res.is_dpjp_fallback) dpjpHtml += '<br><small class="badge bg-warning text-dark" style="font-size:0.7em;">DPJP -</small>';
+                    el.outerHTML = dpjpHtml;
+                });
+            },
+            error: function() {
+                document.querySelectorAll('.skeleton-cell[data-norawat="' + item.no_rawat + '"]').forEach(function(el) {
+                    el.outerHTML = '<span class="text-muted">-</span>';
+                });
+            },
+            complete: function() {
+                _billingRunning--;
+                _processBillingQueue();
+            }
+        });
+    }
 
     function showDetailBilling(noRawat, namaPasien) {
         $('#lbl-pasien').text(namaPasien);

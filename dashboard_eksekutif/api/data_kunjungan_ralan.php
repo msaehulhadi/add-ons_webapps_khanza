@@ -154,31 +154,32 @@ try {
 
     $sql_limit = ($length != -1) ? "LIMIT $start, $length" : "";
 
-    $sql_data = "SELECT rp.no_rawat, rp.tgl_registrasi, rp.jam_reg, p.no_rkm_medis, p.nm_pasien, d.nm_dokter, pl.nm_poli, pj.png_jawab, rp.stts " . $sql_from . " ORDER BY rp.tgl_registrasi DESC, rp.jam_reg DESC $sql_limit";
+    $sql_data = "SELECT rp.no_rawat, rp.tgl_registrasi, rp.jam_reg, p.no_rkm_medis, p.nm_pasien, d.nm_dokter, pl.nm_poli, pj.png_jawab, pj.kd_pj, rp.stts " . $sql_from . " ORDER BY rp.tgl_registrasi DESC, rp.jam_reg DESC $sql_limit";
 
     $res_data = $koneksi->query($sql_data);
     $raw_data = [];
 
     if ($res_data) {
         while ($row = $res_data->fetch_assoc()) {
-            $total_biaya = hitungEstimasiAkurat($koneksi, $row['no_rawat'], $settings);
-            $biaya_obat = hitungObatSaja($koneksi, $row['no_rawat']);
-            $is_anomali = ($row['stts'] == 'Batal' && $total_biaya > 0);
+            // [LAZY LOADING v2] Data struktural saja — biaya dihitung async di frontend
+            $is_anomali = ($row['stts'] == 'Batal');
 
             $raw_data[] = [
-                'waktu' => $row['tgl_registrasi'] . ' ' . $row['jam_reg'],
-                'no_rawat' => $row['no_rawat'],
-                'rm' => $row['no_rkm_medis'],
-                'pasien' => safe_utf8($row['nm_pasien']),
-                'poli' => safe_utf8($row['nm_poli']),
-                'dokter' => safe_utf8($row['nm_dokter']),
-                'penjamin' => safe_utf8($row['png_jawab']),
-                'status' => $row['stts'],
+                'waktu'      => $row['tgl_registrasi'] . ' ' . $row['jam_reg'],
+                'no_rawat'   => $row['no_rawat'],
+                'rm'         => $row['no_rkm_medis'],
+                'pasien'     => safe_utf8($row['nm_pasien']),
+                'poli'       => safe_utf8($row['nm_poli']),
+                'dokter'     => safe_utf8($row['nm_dokter']),
+                'penjamin'   => safe_utf8($row['png_jawab']),
+                'kd_pj'      => $row['kd_pj'],
+                'status'     => $row['stts'],
                 'is_anomali' => $is_anomali,
-                'biaya_obat_raw' => $biaya_obat,
-                'biaya_obat' => 'Rp ' . number_format($biaya_obat, 0, ',', '.'),
-                'estimasi_raw' => $total_biaya, 
-                'estimasi' => 'Rp ' . number_format($total_biaya, 0, ',', '.')
+                // Placeholder — akan diisi async oleh frontend
+                'biaya_obat_raw' => null,
+                'biaya_obat'     => null,
+                'estimasi_raw'   => null,
+                'estimasi'       => null,
             ];
         }
     }

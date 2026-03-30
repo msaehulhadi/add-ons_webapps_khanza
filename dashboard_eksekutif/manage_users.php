@@ -163,8 +163,22 @@ require_once('includes/header.php');
 
 <?php ob_start(); ?>
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
 $(document).ready(function() {
+    <?php if (isset($_GET['msg']) && $_GET['msg'] == 'install_success'): ?>
+    Swal.fire({
+        icon: 'success',
+        title: 'Instalasi Database Selesai!',
+        text: 'Tabel penyangga Autentikasi (roles) berhasil dibangun berdampingan di Database Khanza Anda. Selanjutnya, Silakan cari dan petakan NIK/Nama pegawai ke otorisasi "Admin" atau "Manajemen" untuk membuka gerbang fitur laporan.',
+        confirmButtonText: '<i class="fas fa-check-circle"></i> Mengerti, Lanjutkan',
+        confirmButtonColor: '#198754'
+    }).then(() => {
+        // Membersihkan URL parameternya agar tidak nampak terus-menerus
+        window.history.replaceState(null, null, window.location.pathname);
+    });
+    <?php endif; ?>
+    
     // Inisialisasi DataTable
     $('#tableUsers').DataTable();
 

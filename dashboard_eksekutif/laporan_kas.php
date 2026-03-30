@@ -147,7 +147,7 @@ $net_cash_flow = $total_pemasukan_tunai - $total_pengeluaran;
 <div class="card shadow-sm mb-4">
     <div class="card-body">
         <h5 class="card-title">Filter Data</h5>
-        <form action="dashboard.php" method="GET" class="row g-3">
+        <form action="laporan_kas.php" method="GET" class="row g-3">
             <div class="col-md-5">
                 <label for="tgl_awal" class="form-label">Dari Tanggal</label>
                 <input type="date" class="form-control" name="tgl_awal" id="tgl_awal" value="<?php echo htmlspecialchars($tgl_awal); ?>">

@@ -21,10 +21,10 @@ error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
 // 3. Detail Koneksi Database (Sesuai info Anda)
-define('DB_HOST', '192.168.1.2');
-define('DB_USER', 'client');        
-define('DB_PASS', 'epotoransu');    
-define('DB_NAME', 'sik_master');           
+define('DB_HOST', 'localhost');
+define('DB_USER', 'root');        
+define('DB_PASS', '');    
+define('DB_NAME', 'sik');           
 
 // 4. Buat Koneksi menggunakan MySQLi
 $koneksi = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);

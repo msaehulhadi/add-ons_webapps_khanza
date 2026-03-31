@@ -1,7 +1,6 @@
 # LISENSI EKSKLUSIF & KETENTUAN PENGGUNAAN
 **Proyek:** add-ons_webapps_khanza
 **Deskripsi:** Aplikasi suplementary untuk SIMKES Khanza, fokus pada kemudahan deploy dengan username login universal ke table bawaan Khanza.
-**Pengembang:** Mochammad Ichsan (Ichsan Leonhart)
 
 Dengan mengunduh, menyalin, menginstal, atau menggunakan perangkat lunak ini, Anda secara otomatis menyetujui syarat dan ketentuan di bawah ini:
 
@@ -16,17 +15,14 @@ Hak dan kebebasan pada Poin 1 memiliki batasan yang mutlak dan mengikat. Penggun
 * Menghapus, mengubah, atau menyembunyikan tautan donasi (Saweria dan QRIS) serta kontak pengembang (WhatsApp & Telegram) yang terdapat di dalam *footer* antarmuka pengguna (UI).
 * Mengklaim perangkat lunak ini sebagai hasil karya pihak lain.
 
-## 3. PEMUTUSAN HAK (TERMINASI)
-Pelanggaran terhadap Poin 2 akan mengakibatkan **pencabutan hak dan izin penggunaan secara otomatis**. Pengembang berhak menyematkan mekanisme pertahanan teknis (*kill switch*) di dalam kode yang akan membuat aplikasi berhenti berfungsi apabila terjadi pelanggaran pada Poin 2.
-
 ---
 
 ## 💬 PESAN DARI PENGEMBANG
-Halo rekan-rekan IT Faskes, saya **Mochammad Ichsan**.
+Halo rekan-rekan IT Faskes,
 
-Saya menyadari bahwa *add-ons* ini akan sangat membantu dan memudahkan pekerjaan integrasi data SIMKES Khanza di instansi Anda. Saya telah mendedikasikan banyak waktu, tenaga, dan pikiran demi memastikan aplikasi ini berjalan lancar dan dapat Anda nikmati tanpa biaya lisensi perangkat lunak.
+Terima kasih telah menggunakan aplikasi buatan saya. Semoga hasil kerja saya bisa membantu dan memudahkan pekerjaan integrasi data SIMKES Khanza di instansi Anda.
 
-Aplikasi ini memang 100% gratis, namun kehidupan pengembangnya tidak. Sebagai *developer* independen, saya tidak mendapatkan gaji atau bayaran dari proyek *open-source* ini. Jika karya ini terbukti memperlancar operasional fasilitas kesehatan Anda, saya dengan penuh kerendahan hati memohon agar Anda mempertimbangkan untuk memberikan dukungan finansial.
+Aplikasi ini 100% gratis. Sebagai *developer* independen, saya tidak mendapatkan gaji atau bayaran dari proyek *open-source* ini. Jika karya ini terbukti memperlancar operasional fasilitas kesehatan Anda, saya dengan penuh kerendahan hati memohon agar Anda mempertimbangkan untuk memberikan dukungan finansial.
 
 Berapa pun donasi yang Anda berikan akan sangat berarti bagi saya. Donasi tersebut adalah penyambung hidup, sekaligus menjadi suntikan motivasi yang sangat saya butuhkan agar tidak menyerah dalam merawat dan mengembangkan aplikasi ini ke depannya.
 

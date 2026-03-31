@@ -372,7 +372,7 @@ function get_arrow_class($pages, $current) {
         /* --- NAVBAR (FIXED TOP) --- */
         .navbar {
             height: var(--header-height);
-            z-index: 1030;
+            z-index: 1040; /* Pastikan navbar selalu di atas konten */
         }
         .navbar-brand {
             padding-top: .75rem;
@@ -664,11 +664,11 @@ function get_arrow_class($pages, $current) {
       <?php echo $nama_instansi; ?>
   </a>
 
-  <button class="btn btn-link text-white d-none d-md-block ms-2" id="sidebarToggleDesktop">
+  <button class="btn btn-link text-white d-none d-md-block ms-2" type="button" id="sidebarToggleDesktop" style="z-index:1050; cursor:pointer;">
       <i class="fas fa-bars fa-lg"></i>
   </button>
 
-  <button class="navbar-toggler position-absolute d-md-none collapsed" type="button" id="sidebarToggleMobile" style="right: 10px; top: 15px;">
+  <button class="navbar-toggler position-absolute d-md-none collapsed" type="button" id="sidebarToggleMobile" style="right: 10px; top: 15px; z-index:1050; cursor:pointer;">
     <span class="navbar-toggler-icon"></span>
   </button>
 
@@ -899,41 +899,78 @@ document.addEventListener("DOMContentLoaded", function() {
     }
 });
 
+    // ================================================================
+    // SIDEBAR TOGGLE & PERSISTENCE — ROBUST MULTI-STRATEGY
+    // Bekerja di: XAMPP Windows, Linux Apache, PHP 7.3, PHP 8.x
+    // ================================================================
+    var _sidebarToggleAttached = false;
 
+    function attachSidebarToggle() {
+        // Hindari double-binding jika dipanggil lebih dari sekali
+        if (_sidebarToggleAttached) return;
+
+        var btnDesktop = document.getElementById('sidebarToggleDesktop');
+        var btnMobile  = document.getElementById('sidebarToggleMobile');
+        var overlay    = document.getElementById('mobileOverlay');
+
+        // Jika element belum ada di DOM, batalkan (akan dicoba lagi via event)
+        if (!btnDesktop && !btnMobile) return;
+
+        _sidebarToggleAttached = true;
+
+        // --- Restore state awal dari localStorage saat halaman dibuka ---
+        try {
+            if (localStorage.getItem('sidebarState') === 'closed') {
+                document.body.classList.add('sidebar-closed');
+            }
+        } catch(e) { /* Abaikan jika localStorage tidak tersedia */ }
+
+        // --- Desktop Toggle: tambah/hapus class sidebar-closed pada body ---
+        if (btnDesktop) {
+            btnDesktop.addEventListener('click', function(e) {
+                e.stopPropagation();
+                if (document.body.classList.contains('sidebar-closed')) {
+                    document.body.classList.remove('sidebar-closed');
+                } else {
+                    document.body.classList.add('sidebar-closed');
+                }
+                try {
+                    localStorage.setItem('sidebarState',
+                        document.body.classList.contains('sidebar-closed') ? 'closed' : 'open'
+                    );
+                } catch(e) { /* Abaikan */ }
+            });
+        }
+
+        // --- Mobile Toggle: tambah/hapus class sidebar-open pada body ---
+        if (btnMobile) {
+            btnMobile.addEventListener('click', function(e) {
+                e.stopPropagation();
+                if (document.body.classList.contains('sidebar-open')) {
+                    document.body.classList.remove('sidebar-open');
+                } else {
+                    document.body.classList.add('sidebar-open');
+                }
+            });
+        }
+
+        // --- Tutup sidebar mobile saat overlay diklik ---
+        if (overlay) {
+            overlay.addEventListener('click', function() {
+                document.body.classList.remove('sidebar-open');
+            });
+        }
+    }
+
+    // Strategy 1: Langsung (jika script ada di akhir body & DOM sudah ready)
+    attachSidebarToggle();
+
+    // Strategy 2: Jika Strategy 1 gagal (element belum ada), coba saat DOMContentLoaded
+    document.addEventListener('DOMContentLoaded', attachSidebarToggle);
+
+    // Strategy 3: Fallback terakhir via window.load (setelah semua resource ter-load)
+    window.addEventListener('load', attachSidebarToggle);
+</script>
 
 <main>
     <div class="container-fluid">
-
-<script>
-    // Script untuk Sidebar Toggle & Persistence
-    document.addEventListener("DOMContentLoaded", function() {
-        const body = document.body;
-        const toggleDesktop = document.getElementById('sidebarToggleDesktop');
-        const toggleMobile  = document.getElementById('sidebarToggleMobile');
-        const overlay       = document.getElementById('mobileOverlay');
-
-        const savedState = localStorage.getItem('sidebarState');
-        if (savedState === 'closed') {
-            body.classList.add('sidebar-closed');
-        }
-
-        if(toggleDesktop) {
-            toggleDesktop.addEventListener('click', function() {
-                body.classList.toggle('sidebar-closed');
-                localStorage.setItem('sidebarState', body.classList.contains('sidebar-closed') ? 'closed' : 'open');
-            });
-        }
-
-        if(toggleMobile) {
-            toggleMobile.addEventListener('click', function() {
-                body.classList.toggle('sidebar-open');
-            });
-        }
-
-        if(overlay) {
-            overlay.addEventListener('click', function() {
-                body.classList.remove('sidebar-open');
-            });
-        }
-    });
-</script>

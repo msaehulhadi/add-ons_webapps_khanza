@@ -7,12 +7,13 @@
 # Efeknya: SEMUA 37+ file API terlindungi sekaligus tanpa edit satu per satu.
 #
 # CATATAN PATH:
-# Path harus absolut di XAMPP Windows. Sesuaikan jika lokasi instalasi berbeda.
+# Path relatif (tanpa slash) akan dicari di folder yang sama dengan file yang dieksekusi.
+# Ini bekerja di Windows (XAMPP), Linux (Ubuntu), dan macOS tanpa perubahan apapun.
 
 # =========================================================================
 # 1. INJEKSI AUTH GUARD KE SEMUA FILE PHP DI FOLDER INI
 # =========================================================================
-php_value auto_prepend_file "C:/xampp/htdocs/dashboard_eksekutif/api/auth_guard.php"
+php_value auto_prepend_file auth_guard.php
 
 # =========================================================================
 # 2. NONAKTIFKAN DIRECTORY LISTING (Lapis tambahan)

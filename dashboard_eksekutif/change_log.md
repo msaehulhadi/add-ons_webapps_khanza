@@ -135,3 +135,8 @@
 - **[UI/UX]** Fitur **Module Accordion**: Panduan kini tersaji secara collapsible per kategori (Keuangan, Farmasi, HRD, dll) untuk navigasi yang lebih efisien.
 - **[MEDIA]** Penambahan 50+ tangkapan layar (screenshots) High-Resolution ke dalam panduan sebagai referensi visual langkah-demi-langkah.
 - **[FITUR]** Implementasi fungsi **Print Dokumentasi** yang ringkas dan ramah printer untuk kebutuhan manual fisik.
+
+## [v3.7.1] — 31 Maret 2026, 07:58 WIB
+### ?? Perbaikan
+- **[UI/UX]** Perbaikan tombol hamburger sidebar toggle yang tidak responsif di Desktop dan Mobile. Fix meliputi: penambahan 	ype="button" eksplisit, peningkatan z-index navbar ke 1040/1050, dan penggunaan window.addEventListener('load') + e.stopPropagation() untuk memastikan event listener terpasang setelah semua resource selesai dimuat.
+- **[DEPLOY]** Perbaikan pi/.htaccess: Mengganti path absolut Windows hardcoded dengan path relatif agar API Auth Guard berjalan di server Linux Ubuntu.

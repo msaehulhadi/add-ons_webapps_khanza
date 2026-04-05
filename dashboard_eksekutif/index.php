@@ -217,6 +217,12 @@ if (isset($koneksi)) {
             Terlalu banyak percobaan Login yang gagal. Silakan coba lagi dalam
             <strong><span id="countdown">' . $tampil_sisa . '</span> detik</strong>.
         </div>';
+    } elseif ($error === 'no_access') {
+        // User/password benar, tapi belum dikasih hak akses oleh Super Admin Server
+        echo '<div class="alert-warning-glass mb-3">
+            <i class="fas fa-exclamation-circle me-2"></i> <strong>Akun valid, namun belum berhak!</strong><br>
+            Hak akses Dashboard Eksekutif Anda belum diaktifkan. Silakan hubungi <b>IT / Super Admin</b> untuk mencentang otoritas <em>Harian</em> dan <em>Bulanan Menejemen</em> Anda di sistem.
+        </div>';
     } elseif ($error === '1') {
         // Login gagal biasa
         $hint_sisa = '';

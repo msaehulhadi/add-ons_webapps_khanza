@@ -92,24 +92,6 @@ if ($res_admin->num_rows === 1) {
         $_SESSION['is_admin']  = true;
         $_SESSION['role']      = 'Super Admin';
 
-        $stmt_admin->close();
-        
-        // --- Cek Kesiapan Instalasi Dashboard (First-Time Onboarding) ---
-        $check_table = $koneksi->query("SHOW TABLES LIKE 'roles'");
-        if ($check_table->num_rows == 0) {
-            header("Location: ../install_roles.php");
-            exit;
-        }
-
-        // --- Cek apakah tabel terpasang namun masih kosong (Belum ada User terdaftar) ---
-        $check_empty = $koneksi->query("SELECT COUNT(*) as count FROM roles");
-        if ($check_empty && $row_empty = $check_empty->fetch_assoc()) {
-            if ($row_empty['count'] == 0) {
-                header("Location: ../manage_users.php?msg=install_success");
-                exit;
-            }
-        }
-
         // Normal Flow
         header("Location: ../dashboard.php");
         exit;
@@ -123,7 +105,10 @@ $stmt_admin->close();
 $sql_user = "
     SELECT
         AES_DECRYPT(id_user, 'nur') as id_user,
-        AES_DECRYPT(password, 'windi') as password
+        AES_DECRYPT(password, 'windi') as password,
+        harian_menejemen,
+        bulanan_menejemen,
+        pegawai_admin
     FROM user
     WHERE AES_DECRYPT(id_user, 'nur') = ?
 ";
@@ -138,58 +123,53 @@ if ($res_user->num_rows === 1) {
 
     if ($row_user['password'] === $password_input) {
 
-        // --- VALIDASI ROLE (Hanya untuk User Biasa) ---
-        $sql_role = "SELECT role FROM roles WHERE username = ?";
-        $stmt_role = $koneksi->prepare($sql_role);
-        $stmt_role->bind_param("s", $username);
-        $stmt_role->execute();
-        $res_role = $stmt_role->get_result();
+        // --- VALIDASI AKSES DARI TABEL USER DIREKSI ---
+        // WAJIB: Kedua kolom hak akses dashboard eksekutif ini harus diset 'true'
+        if ($row_user['harian_menejemen'] === 'true' && $row_user['bulanan_menejemen'] === 'true') {
+            // ✅ Login berhasil sebagai User Manajemen/Eksekutif
+            session_regenerate_id(true); // Anti-Session Fixation
 
-        if ($res_role->num_rows > 0) {
-            $data_role = $res_role->fetch_assoc();
+            // Reset throttle counter
+            $_SESSION['login_attempts']      = 0;
+            $_SESSION['login_lockout_until'] = 0;
 
-            if ($data_role['role'] === 'Admin' || $data_role['role'] === 'Manajemen') {
-                // ✅ Login berhasil sebagai User Admin atau Manajemen
-                session_regenerate_id(true); // Anti-Session Fixation
+            $_SESSION['user_id']  = $username;
+            // Set role menjadi Manajemen jika lolos otentikasi
+            $_SESSION['role']     = 'Manajemen';
+            $_SESSION['is_admin'] = false;
 
-                // Reset throttle counter
-                $_SESSION['login_attempts']      = 0;
-                $_SESSION['login_lockout_until'] = 0;
+            // --- FIX KRITIS: Query nama pakai Prepared Statement (no SQL Injection) ---
+            // Cek dari tabel petugas
+            $q_nama = $koneksi->prepare("SELECT nama FROM petugas WHERE nip = ?");
+            $q_nama->bind_param("s", $username);
+            $q_nama->execute();
+            $r_nama = $q_nama->get_result();
 
-                $_SESSION['user_id']  = $username;
-                $_SESSION['role']     = $data_role['role'];
-                $_SESSION['is_admin'] = false;
-
-                // --- FIX KRITIS: Query nama pakai Prepared Statement (no SQL Injection) ---
-                // Cek dari tabel petugas
-                $q_nama = $koneksi->prepare("SELECT nama FROM petugas WHERE nip = ?");
+            if ($r_nama->num_rows == 0) {
+                $q_nama->close();
+                // Cek dari tabel dokter jika tidak ada di petugas
+                $q_nama = $koneksi->prepare("SELECT nm_dokter as nama FROM dokter WHERE kd_dokter = ?");
                 $q_nama->bind_param("s", $username);
                 $q_nama->execute();
                 $r_nama = $q_nama->get_result();
-
-                if ($r_nama->num_rows == 0) {
-                    $q_nama->close();
-                    // Cek dari tabel dokter jika tidak ada di petugas
-                    $q_nama = $koneksi->prepare("SELECT nm_dokter as nama FROM dokter WHERE kd_dokter = ?");
-                    $q_nama->bind_param("s", $username);
-                    $q_nama->execute();
-                    $r_nama = $q_nama->get_result();
-                }
-
-                if ($r_nama && $row_nama = $r_nama->fetch_assoc()) {
-                    $_SESSION['nama_user'] = $row_nama['nama'];
-                } else {
-                    $_SESSION['nama_user'] = $username;
-                }
-                $q_nama->close();
-
-                $stmt_role->close();
-                $stmt_user->close();
-                header("Location: ../dashboard.php");
-                exit;
             }
+
+            if ($r_nama && $row_nama = $r_nama->fetch_assoc()) {
+                $_SESSION['nama_user'] = $row_nama['nama'];
+            } else {
+                $_SESSION['nama_user'] = $username;
+            }
+            $q_nama->close();
+
+            $stmt_user->close();
+            header("Location: ../dashboard.php");
+            exit;
+        } else {
+            // Kredensial benar, tetapi GAK PUNYA hak akses eksekutif
+            $stmt_user->close();
+            header("Location: ../index.php?error=no_access");
+            exit;
         }
-        $stmt_role->close();
     }
 }
 $stmt_user->close();

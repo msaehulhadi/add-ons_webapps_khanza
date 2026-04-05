@@ -140,3 +140,13 @@
 ### ?? Perbaikan
 - **[UI/UX]** Perbaikan tombol hamburger sidebar toggle yang tidak responsif di Desktop dan Mobile. Fix meliputi: penambahan 	ype="button" eksplisit, peningkatan z-index navbar ke 1040/1050, dan penggunaan window.addEventListener('load') + e.stopPropagation() untuk memastikan event listener terpasang setelah semua resource selesai dimuat.
 - **[DEPLOY]** Perbaikan pi/.htaccess: Mengganti path absolut Windows hardcoded dengan path relatif agar API Auth Guard berjalan di server Linux Ubuntu.
+
+## [v1.4.0] — 05 April 2026, 20.32 WIB
+### ✨ Penambahan / 🔒 Keamanan
+- **[AUTH]** Migrasi otentikasi: Dashboard kini menggunakan Native Khanza Database Authorization. Akses kini mutlak dikontrol lewat field `harian_menejemen` dan `bulanan_menejemen` pada tabel user (Dulu menggunakan tabel 'roles').
+- **[UI]** Manage Users UI telah dirubah fungsinya untuk memperbolehkan Super Admin langsung mengubah kolom harian_menejemen & ulanan_menejemen via pencarian nama dan update database.
+
+## [v1.4.1] — 05 April 2026, 20.36 WIB
+### 🐛 Perbaikan / ⚡ Optimasi
+- **[AUTH]** Perbaikan bug tombol 'Cabut' yang tidak berfungsi pada user non-pegawai dengan menggunakan validasi AES_DECRYPT di sisi database.
+- **[UI]** Optimasi Select2: Mematikan interceptor AJAX loading global (global:false) saat pencarian nama pegawai agar tidak muncul overlay yang mengganggu pengetikan.

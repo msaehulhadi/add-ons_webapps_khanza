@@ -10,7 +10,7 @@ Halo! Sebelum masuk ke dunia grafik yang warna-warni, pastiin dulu kamu punya ak
 ![Tampilan Layar Login](1. login.jpg)
 
 *   **Username & Password**: Pake akun SIMKES Khanza kamu.
-*   **Role & Jabatan**: GAK SEMUA ORANG bisa intip menu "piutang" atau "pihak ketiga". Cuma kamu yang dapet mandat Role **'Admin'** atau **'Manajemen'** yang bisa masuk. 
+*   **Hak Akses (Otoritas Khusus)**: GAK SEMUA ORANG bisa intip menu "piutang" atau "pihak ketiga". Cuma kamu yang akun Khanza-nya dicentang **'Harian Menejemen'** dan **'Bulanan Menejemen'** oleh tim IT yang bisa masuk. (Hubungi IT bila kamu belum punya akses ini). 
 *   **Keamanan Ekstra**: Kalo salah password 6 kali, kamu bakal kena *lockout* (dikunci) selama 60 detik. Jadi, jangan asal tebak ya!
 
 ---

@@ -21,9 +21,9 @@
             <span>Log Sistem</span>
         </a>
         
-        <a id="dev-saweria-link"
-           href="https://saweria.co/ichsanleonhart"
-           target="_blank"
+         <a id="dev-saweria-link"
+           href="https://saweria.co/ichsanleonhart" 
+           target="_blank" 
            rel="noopener noreferrer"
            class="dev-link-btn dev-link-saweria"
            title="Dukung pengembangan via Saweria">

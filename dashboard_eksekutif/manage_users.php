@@ -1,7 +1,7 @@
 <?php
 /*
  * File: manage_users.php
- * Deskripsi: Utility untuk Manage User & Roles (Super Admin Only)
+ * Deskripsi: Utility untuk Manage Hak Akses Eksekutif via tabel user
  */
 
 // --- KONFIGURASI AKSES ---
@@ -12,12 +12,10 @@ session_start();
 require_once('config/koneksi.php');
 
 // Cek apakah user yang login adalah Super Admin
-$current_user = isset($_SESSION['username']) ? $_SESSION['username'] : '';
-// Atau jika session menggunakan field lain, sesuaikan. 
-// Misal: if (!in_array($current_user, $super_admins) && $_SESSION['role'] !== 'Admin') { ... }
+$current_user = isset($_SESSION['user_id']) ? $_SESSION['user_id'] : (isset($_SESSION['username']) ? $_SESSION['username'] : '');
 
 if (!in_array($current_user, $super_admins) && (!isset($_SESSION['role']) || $_SESSION['role'] != 'Super Admin')) {
-    die("<div style='text-align:center; margin-top:50px;'><h3>⛔ AKSES DITOLAK</h3><p>Halaman ini hanya untuk Super Admin.</p><a href='index.php'>Kembali</a></div>");
+    die("<div style='text-align:center; margin-top:50px;'><h3>⛔ AKSES DITOLAK</h3><p>Halaman ini khusus untuk Super Admin IT.</p><a href='index.php'>Kembali</a></div>");
 }
 
 // PROSES FORM (SIMPAN/HAPUS)
@@ -27,27 +25,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     if ($act == 'save') {
         $username = $koneksi->real_escape_string($_POST['username']);
-        $role     = $koneksi->real_escape_string($_POST['role']);
-        $cap      = $koneksi->real_escape_string($_POST['cap']);
-        $module   = $koneksi->real_escape_string($_POST['module']);
 
-        if (!empty($username) && !empty($role)) {
-            // Menggunakan REPLACE INTO agar jika user sudah punya role, akan di-update
-            $sql = "REPLACE INTO roles (username, role, cap, module) VALUES ('$username', '$role', '$cap', '$module')";
+        if (!empty($username)) {
+            // Kita update langsung ke tabel user khanza menggunakan enkripsi aes
+            $sql = "UPDATE user SET harian_menejemen = 'true', bulanan_menejemen = 'true' WHERE id_user = AES_ENCRYPT('$username', 'nur')";
             if ($koneksi->query($sql)) {
-                $msg = "<div class='alert alert-success'>Data user <b>$username</b> berhasil disimpan/diupdate.</div>";
+                $msg = "<div class='alert alert-success'>Akses Eksekutif untuk <b>$username</b> berhasil diberikan.</div>";
             } else {
                 $msg = "<div class='alert alert-danger'>Gagal menyimpan: " . $koneksi->error . "</div>";
             }
         }
     } elseif ($act == 'delete') {
         $username = $koneksi->real_escape_string($_POST['username_del']);
-        $koneksi->query("DELETE FROM roles WHERE username='$username'");
-        $msg = "<div class='alert alert-warning'>User <b>$username</b> telah dihapus dari hak akses.</div>";
+        $id_user_hex = isset($_POST['id_user_hex']) ? $koneksi->real_escape_string($_POST['id_user_hex']) : '';
+        
+        // Gunakan UNHEX jika id_user_hex tersedia untuk delete absolut (mengatasi bug akun tanpa enkripsi standard)
+        if (!empty($id_user_hex)) {
+            $sql = "UPDATE user SET harian_menejemen = 'false', bulanan_menejemen = 'false' WHERE id_user = UNHEX('$id_user_hex')";
+        } else {
+            $sql = "UPDATE user SET harian_menejemen = 'false', bulanan_menejemen = 'false' WHERE id_user = AES_ENCRYPT('$username', 'nur')";
+        }
+
+        if ($koneksi->query($sql)) {
+            $msg = "<div class='alert alert-warning'>Akses Eksekutif untuk <b>" . htmlspecialchars($username) . "</b> telah dicabut.</div>";
+        } else {
+            $msg = "<div class='alert alert-danger'>Gagal mencabut: " . $koneksi->error . "</div>";
+        }
     }
 }
 
-$page_title = "Manajemen User & Role";
+$page_title = "Manajemen Akses Eksekutif";
 require_once('includes/header.php');
 ?>
 
@@ -55,7 +62,7 @@ require_once('includes/header.php');
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" />
 
 <div class="container-fluid">
-    <h1 class="h3 mb-4 text-gray-800"><i class="fas fa-users-cog me-2"></i>Manajemen User & Role</h1>
+    <h1 class="h3 mb-4 text-gray-800"><i class="fas fa-user-shield me-2"></i>Pengaturan Hak Akses Eksekutif</h1>
     
     <?= $msg; ?>
 
@@ -63,9 +70,15 @@ require_once('includes/header.php');
         <div class="col-lg-4 mb-4">
             <div class="card shadow border-left-primary">
                 <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">Tambah / Edit User</h6>
+                    <h6 class="m-0 font-weight-bold text-primary">Berikan Akses Baru</h6>
                 </div>
                 <div class="card-body">
+                    
+                    <div class="alert alert-info" style="font-size: 0.85rem;">
+                        <i class="fas fa-info-circle me-1"></i> <strong>Info untuk IT / Super Admin:</strong><br>
+                        Ketika Anda menambahkan NIK pengguna di sini, sistem akan secara mandiri mengupdate tabel <code>user</code> di database SIMKES Khanza untuk mengubah kolom <code>harian_menejemen</code> dan <code>bulanan_menejemen</code> secara bersamaan menjadi <b>'true'</b>. Mode ini dijamin native dan memusatkan sumber otoritas (Zero-Trust Architecture).
+                    </div>
+
                     <form method="POST" action="">
                         <input type="hidden" name="act" value="save">
                         
@@ -77,32 +90,7 @@ require_once('includes/header.php');
                             <small class="text-muted">Ketik Nama atau NIK Pegawai dari database Khanza.</small>
                         </div>
 
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">Role Access</label>
-                            <select class="form-select" name="role" required>
-                                <option value="">-- Pilih Role --</option>
-                                <option value="Admin">Admin (Full Access)</option>
-                                <option value="Manajemen">Manajemen</option>
-                                <option value="Apotek">Apotek</option>
-                                <option value="Keuangan">Keuangan</option>
-                                <option value="Casemix">Casemix</option>
-                                <option value="Medis">Medis</option>
-                            </select>
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">Capability (Cap)</label>
-                            <input type="text" class="form-control" name="cap" placeholder="Contoh: read,write,delete">
-                            <small class="text-muted">Opsional: String untuk validasi khusus.</small>
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">Allowed Modules</label>
-                            <textarea class="form-control" name="module" rows="3" placeholder="Contoh: ralan,ranap,apotek"></textarea>
-                            <small class="text-muted">Opsional: Daftar modul yang diizinkan.</small>
-                        </div>
-
-                        <button type="submit" class="btn btn-primary w-100"><i class="fas fa-save me-1"></i> Simpan User</button>
+                        <button type="submit" class="btn btn-primary w-100"><i class="fas fa-check-circle me-1"></i> Jadikan Eksekutif</button>
                     </form>
                 </div>
             </div>
@@ -111,7 +99,7 @@ require_once('includes/header.php');
         <div class="col-lg-8 mb-4">
             <div class="card shadow">
                 <div class="card-header py-3 d-flex justify-content-between align-items-center">
-                    <h6 class="m-0 font-weight-bold text-primary">Daftar User Terdaftar (Tabel Roles)</h6>
+                    <h6 class="m-0 font-weight-bold text-primary">Daftar Akun yang Diberi Akses Eksekutif</h6>
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
@@ -120,34 +108,36 @@ require_once('includes/header.php');
                                 <tr>
                                     <th>Username (NIK)</th>
                                     <th>Nama Pegawai</th>
-                                    <th>Role</th>
-                                    <th>Modules</th>
+                                    <th>Status Akses</th>
                                     <th class="text-center">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <?php
-                                // Join ke tabel pegawai untuk mengambil nama asli
-                                $q = $koneksi->query("SELECT r.*, p.nama FROM roles r LEFT JOIN pegawai p ON r.username = p.nik ORDER BY r.role ASC, p.nama ASC");
+                                // Mengambil data user yang memiliki harian_menejemen & bulanan_menejemen = 'true'
+                                $sql_list = "
+                                    SELECT HEX(u.id_user) as id_user_hex, AES_DECRYPT(u.id_user, 'nur') as id_user_dec, p.nama 
+                                    FROM user u 
+                                    LEFT JOIN pegawai p ON AES_DECRYPT(u.id_user, 'nur') = p.nik 
+                                    WHERE u.harian_menejemen = 'true' AND u.bulanan_menejemen = 'true'
+                                ";
+                                $q = $koneksi->query($sql_list);
                                 while($row = $q->fetch_assoc()) {
-                                    $username_esc = htmlspecialchars($row['username']);
+                                    $username_esc = htmlspecialchars($row['id_user_dec'] ?? 'ERROR (Data Tidak Wajar/Invalid Encryption)');
                                     $nama_esc = htmlspecialchars($row['nama'] ?? 'User Tidak Dikenal (Bukan Pegawai)');
-                                    $role_badge = 'bg-secondary';
-                                    
-                                    if($row['role'] == 'Admin') $role_badge = 'bg-danger';
-                                    elseif($row['role'] == 'Medis') $role_badge = 'bg-success';
-                                    elseif($row['role'] == 'Keuangan') $role_badge = 'bg-warning text-dark';
                                 ?>
                                 <tr>
                                     <td><?= $username_esc ?></td>
                                     <td><?= $nama_esc ?></td>
-                                    <td><span class="badge <?= $role_badge ?>"><?= $row['role'] ?></span></td>
-                                    <td><small class="text-muted"><?= htmlspecialchars($row['module']) ?></small></td>
+                                    <td>
+                                        <span class="badge bg-success">Harian & Bulanan Menejemen (native)</span>
+                                    </td>
                                     <td class="text-center">
-                                        <form method="POST" onsubmit="return confirm('Hapus akses user ini?');" style="display:inline;">
+                                        <form method="POST" onsubmit="return confirm('Cabut akses Eksekutif untuk user ini? Status harian & bulanan menejemen akan di-set menjadi false.');" style="display:inline;">
                                             <input type="hidden" name="act" value="delete">
                                             <input type="hidden" name="username_del" value="<?= $username_esc ?>">
-                                            <button type="submit" class="btn btn-sm btn-danger" title="Hapus Akses"><i class="fas fa-trash"></i></button>
+                                            <input type="hidden" name="id_user_hex" value="<?= htmlspecialchars($row['id_user_hex']) ?>">
+                                            <button type="submit" class="btn btn-sm btn-danger" title="Cabut Akses"><i class="fas fa-trash-alt me-1"></i> Cabut</button>
                                         </form>
                                     </td>
                                 </tr>
@@ -166,21 +156,12 @@ require_once('includes/header.php');
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
 $(document).ready(function() {
-    <?php if (isset($_GET['msg']) && $_GET['msg'] == 'install_success'): ?>
-    Swal.fire({
-        icon: 'success',
-        title: 'Instalasi Database Selesai!',
-        text: 'Tabel penyangga Autentikasi (roles) berhasil dibangun berdampingan di Database Khanza Anda. Selanjutnya, Silakan cari dan petakan NIK/Nama pegawai ke otorisasi "Admin" atau "Manajemen" untuk membuka gerbang fitur laporan.',
-        confirmButtonText: '<i class="fas fa-check-circle"></i> Mengerti, Lanjutkan',
-        confirmButtonColor: '#198754'
-    }).then(() => {
-        // Membersihkan URL parameternya agar tidak nampak terus-menerus
-        window.history.replaceState(null, null, window.location.pathname);
-    });
-    <?php endif; ?>
-    
     // Inisialisasi DataTable
-    $('#tableUsers').DataTable();
+    $('#tableUsers').DataTable({
+        language: {
+            url: '//cdn.datatables.net/plug-ins/1.13.4/i18n/id.json',
+        }
+    });
 
     // Inisialisasi Select2 dengan AJAX
     $('#select_pegawai').select2({
@@ -192,6 +173,7 @@ $(document).ready(function() {
             url: 'api/ajax_pegawai.php',
             dataType: 'json',
             delay: 250,
+            global: false, // Mematikan global interceptor AJAX (mencegah tirai loading muncul berulang)
             data: function (params) {
                 return { q: params.term }; // Kirim parameter 'q'
             },

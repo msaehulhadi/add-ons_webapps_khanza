@@ -21,7 +21,9 @@ if (session_status() === PHP_SESSION_NONE) {
  */
 function require_login() {
     if (empty($_SESSION['user_id'])) {
-        header('Location: ' . str_repeat('../', substr_count($_SERVER['SCRIPT_NAME'], '/', strlen($_SERVER['SCRIPT_NAME']) - strlen(basename($_SERVER['SCRIPT_NAME']))) - 1) . 'login.php');
+        $depth = substr_count($_SERVER['SCRIPT_NAME'], '/') - 1;
+        $up    = max(0, $depth - 1);
+        header('Location: ' . str_repeat('../', $up) . 'login.php');
         exit;
     }
 }

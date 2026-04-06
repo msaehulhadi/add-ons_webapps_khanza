@@ -20,8 +20,8 @@ $action = $_GET['action'] ?? '';
 
 $table_map = [
     'kfa'    => ['table' => 'satu_sehat_ref_kfa',    'pk' => 'kfa_code',    'cols' => ['kfa_code', 'display_name']],
-    'loinc'  => ['table' => 'satu_sehat_ref_loinc',  'pk' => 'loinc_code',  'cols' => ['loinc_code', 'component', 'long_common_name']],
-    'snomed' => ['table' => 'satu_sehat_ref_snomed',  'pk' => 'snomed_code', 'cols' => ['snomed_code', 'display']],
+    'loinc'  => ['table' => 'satu_sehat_ref_loinc',  'pk' => 'loinc_num',  'cols' => ['loinc_num', 'component', 'long_common_name']],
+    'snomed' => ['table' => 'satu_sehat_ref_snomed',  'pk' => 'conceptId', 'cols' => ['conceptId', 'term']],
 ];
 
 try {
@@ -69,7 +69,7 @@ try {
             exit;
         }
 
-        $colList = implode(', ', array_map(fn($c) => "`$c`", $cols));
+        $colList = implode(', ', array_map(function($c) { return "`$c`"; }, $cols));
         $params  = [];
 
         // Build WHERE across all cols
@@ -136,9 +136,9 @@ try {
             exit;
         }
 
-        $col_list   = implode(', ', array_map(fn($c) => "`$c`", $cols));
+        $col_list   = implode(', ', array_map(function($c) { return "`$c`"; }, $cols));
         $placeholders = implode(', ', array_fill(0, count($cols), '?'));
-        $update_set = implode(', ', array_map(fn($c) => "`$c` = VALUES(`$c`)", $cols));
+        $update_set = implode(', ', array_map(function($c) { return "`$c` = VALUES(`$c`)"; }, $cols));
 
         if (!empty($old_pk) && $old_pk !== $vals[$pk]) {
             // PK berubah: hapus lama, insert baru
@@ -179,6 +179,16 @@ try {
     echo json_encode(['status' => 'error', 'message' => 'Action tidak dikenal.']);
 
 } catch (Exception $e) {
-    echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+    // DataTables expects the "error" key when an error occurs,
+    // otherwise it will throw the generic "Ajax error" (TN/7).
+    echo json_encode([
+        'draw' => (int)($_GET['draw'] ?? 1),
+        'recordsTotal' => 0,
+        'recordsFiltered' => 0,
+        'data' => [],
+        'status' => 'error',
+        'error' => $e->getMessage(),
+        'message' => $e->getMessage()
+    ]);
 }
 ?>

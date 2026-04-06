@@ -167,30 +167,39 @@ check_module_access('satu_sehat_mapping_obat'); // RBAC Guard
                     <div class="col-md-6 mb-3">
                         <label class="form-label fw-bold small text-muted">4. Satuan Numerator (Kekuatan)</label>
                         <select class="form-select select2-tags" id="select_numerator">
-                            <option value="">-- Pilih Unit --</option>
-                            <option value="mg">mg (Miligram)</option>
-                            <option value="mL">mL (Mililiter)</option>
-                            <option value="g">g (Gram)</option>
-                            <option value="ug">ug (Mikrogram)</option>
-                            <option value="[IU]">[IU] (International Unit)</option>
-                            <option value="%">% (Persen)</option>
+                            <option value="">-- Pilih Satuan --</option>
+                            <?php
+                            $stmt = $pdo->query("SELECT * FROM satu_sehat_ref_numerator ORDER BY code ASC");
+                            while ($n = $stmt->fetch()) {
+                                echo "<option value='" . htmlspecialchars($n['code'], ENT_QUOTES, 'UTF-8') . "'>"
+                                   . htmlspecialchars($n['code'], ENT_QUOTES, 'UTF-8') . " — " . htmlspecialchars($n['display'], ENT_QUOTES, 'UTF-8') . "</option>";
+                            }
+                            ?>
                         </select>
-                        <div id="num_badge" class="badge bg-secondary mt-1">System: Auto</div>
+                        <div id="num_badge" class="badge bg-success mt-1">System: UCUM (http://unitsofmeasure.org)</div>
                     </div>
                     <div class="col-md-6 mb-3">
                         <label class="form-label fw-bold small text-muted">5. Satuan Denominator (Penyajian)</label>
                         <select class="form-select select2-tags" id="select_denominator">
-                            <option value="">-- Pilih Unit --</option>
-                            <option value="TAB">TAB (Tablet)</option>
-                            <option value="CAP">CAP (Kapsul)</option>
-                            <option value="PCS">PCS (Pcs)</option>
-                            <option value="BOTOL">BOTOL (Botol)</option>
-                            <option value="VIAL">VIAL (Vial)</option>
-                            <option value="AMPUL">AMPUL (Ampul)</option>
-                            <option value="SACHET">SACHET (Sachet)</option>
-                            <option value="TUBE">TUBE (Tube)</option>
-                            <option value="SUPP">SUPP (Supp)</option>
-                            <option value="mL">mL (khusus cair)</option>
+                            <option value="">-- Pilih Satuan --</option>
+                            <optgroup label="Sediaan Padat/Lainnya (DrugForm)">
+                            <?php
+                            $stmt = $pdo->query("SELECT * FROM satu_sehat_ref_denominator ORDER BY code ASC");
+                            while ($dn = $stmt->fetch()) {
+                                echo "<option value='" . htmlspecialchars($dn['code'], ENT_QUOTES, 'UTF-8') . "' data-sys='DrugForm'>"
+                                   . htmlspecialchars($dn['code'], ENT_QUOTES, 'UTF-8') . " — " . htmlspecialchars($dn['display'], ENT_QUOTES, 'UTF-8') . "</option>";
+                            }
+                            ?>
+                            </optgroup>
+                            <optgroup label="Sediaan Cair/Volume (UCUM)">
+                            <?php
+                            $stmtU = $pdo->query("SELECT * FROM satu_sehat_ref_numerator ORDER BY code ASC");
+                            while ($nu = $stmtU->fetch()) {
+                                echo "<option value='" . htmlspecialchars($nu['code'], ENT_QUOTES, 'UTF-8') . "' data-sys='UCUM'>"
+                                   . htmlspecialchars($nu['code'], ENT_QUOTES, 'UTF-8') . " — " . htmlspecialchars($nu['display'], ENT_QUOTES, 'UTF-8') . "</option>";
+                            }
+                            ?>
+                            </optgroup>
                         </select>
                         <div id="den_badge" class="badge bg-secondary mt-1">System: Auto</div>
                     </div>
@@ -349,18 +358,34 @@ $(function() {
         modal.show();
     });
 
-    // 6. Auto-detect unit system (visual)
-    function detectSystem(val) {
-        var ucum = ['mg', 'ml', 'g', 'ug', 'mcg', 'l', 'iu', '[iu]', '%', 'mmol', 'mol', 'mg/ml', 'mg/g'];
-        return ucum.includes((val || '').toLowerCase()) ? {bg:'bg-success',txt:'UCUM'} : {bg:'bg-primary',txt:'DrugForm'};
-    }
+    // 6. Badge sistem (tetap, tidak perlu auto-detect lagi)
     $('#select_numerator').on('change', function() {
-        var d = detectSystem($(this).val());
-        $('#num_badge').removeClass('bg-secondary bg-primary bg-success').addClass(d.bg).text('System: '+d.txt);
+        var v = $(this).val();
+        if (v) {
+            $('#num_badge').removeClass('bg-secondary').addClass('bg-success').text('System: UCUM (http://unitsofmeasure.org)');
+        } else {
+            $('#num_badge').removeClass('bg-success').addClass('bg-secondary').text('System: UCUM (http://unitsofmeasure.org)');
+        }
     });
     $('#select_denominator').on('change', function() {
-        var d = detectSystem($(this).val());
-        $('#den_badge').removeClass('bg-secondary bg-primary bg-success').addClass(d.bg).text('System: '+d.txt);
+        var v = $(this).val();
+        var sys = $(this).find('option:selected').data('sys');
+        
+        // Auto-detect if custom tag (not in list)
+        if (!sys && v) {
+            var liquid = ['ml','l','mg/ml','g/ml','[drp]'].includes(v.toLowerCase());
+            sys = liquid ? 'UCUM' : 'DrugForm';
+        }
+
+        if (v) {
+            if (sys === 'UCUM') {
+                $('#den_badge').removeClass('bg-secondary bg-primary').addClass('bg-success').text('System: UCUM (http://unitsofmeasure.org)');
+            } else {
+                $('#den_badge').removeClass('bg-secondary bg-success').addClass('bg-primary').text('System: HL7 DrugForm');
+            }
+        } else {
+            $('#den_badge').removeClass('bg-primary bg-success').addClass('bg-secondary').text('System: Auto');
+        }
     });
 
     // 7. Simpan mapping via AJAX (dengan CSRF)

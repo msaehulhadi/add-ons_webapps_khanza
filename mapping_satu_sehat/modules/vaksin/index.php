@@ -152,11 +152,14 @@ check_module_access('satu_sehat_mapping_vaksin');
                             </div>
                             <div class="col-5">
                                 <select class="form-select" id="dose_qty_unit_select">
-                                    <option value="mL">mL</option>
-                                    <option value="mg">mg</option>
-                                    <option value="IU">IU</option>
-                                    <option value="ug">ug</option>
-                                    <option value="TAB">TAB</option>
+                                    <option value="">-- Pilih Satuan --</option>
+                                    <?php
+                                    $stmtN = $pdo->query("SELECT * FROM satu_sehat_ref_numerator ORDER BY code ASC");
+                                    while ($nu = $stmtN->fetch()) {
+                                        echo "<option value='" . htmlspecialchars($nu['code'], ENT_QUOTES, 'UTF-8') . "'>"
+                                           . htmlspecialchars($nu['code'], ENT_QUOTES, 'UTF-8') . " \u2014 " . htmlspecialchars($nu['display'], ENT_QUOTES, 'UTF-8') . "</option>";
+                                    }
+                                    ?>
                                 </select>
                             </div>
                         </div>

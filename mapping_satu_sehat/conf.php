@@ -80,7 +80,9 @@ function check_tables_exist($pdo) {
         'satu_sehat_ref_kfa', 
         'satu_sehat_ref_loinc', 
         'satu_sehat_ref_route', 
-        'satu_sehat_ref_snomed'
+        'satu_sehat_ref_snomed',
+        'satu_sehat_ref_numerator',
+        'satu_sehat_ref_denominator'
     ];
     foreach ($required as $table) {
         try {

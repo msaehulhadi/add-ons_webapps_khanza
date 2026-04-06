@@ -63,6 +63,18 @@ if ($action === 'run_import') {
             echo json_encode(['status' => 'success', 'message' => 'satu_sehat_ref_loinc berhasil diimpor!']);
             exit;
         }
+        if ($step === 'numerator') {
+            $sql = file_get_contents($sql_dir . 'satu_sehat_ref_numerator.sql');
+            $pdo->exec($sql);
+            echo json_encode(['status' => 'success', 'message' => 'satu_sehat_ref_numerator berhasil!']);
+            exit;
+        }
+        if ($step === 'denominator') {
+            $sql = file_get_contents($sql_dir . 'satu_sehat_ref_denominator.sql');
+            $pdo->exec($sql);
+            echo json_encode(['status' => 'success', 'message' => 'satu_sehat_ref_denominator berhasil!']);
+            exit;
+        }
         if ($step === 'tables') {
             // Create target mapping tables
             $tables = [
@@ -103,6 +115,7 @@ if ($action === 'run_import') {
 $missing_tables = [];
 $check_tables = [
     'satu_sehat_ref_form', 'satu_sehat_ref_route', 'satu_sehat_ref_kfa', 'satu_sehat_ref_loinc', 'satu_sehat_ref_snomed',
+    'satu_sehat_ref_numerator', 'satu_sehat_ref_denominator',
     'satu_sehat_mapping_obat', 'satu_sehat_mapping_lab', 'satu_sehat_mapping_radiologi', 'satu_sehat_mapping_vaksin'
 ];
 
@@ -227,6 +240,14 @@ $is_safe = (count($missing_tables) === 0);
                             <div class="fw-semibold text-secondary">6. Create: Tabel Mapping (Obat, Lab, Rad, Vaksin)</div>
                             <i class="fa fa-circle status-icon pending"></i>
                         </div>
+                        <div class="step-box" id="step-numerator" data-step="numerator">
+                            <div class="fw-semibold text-secondary">7. Import Tabel: satu_sehat_ref_numerator.sql (Satuan UCUM)</div>
+                            <i class="fa fa-circle status-icon pending"></i>
+                        </div>
+                        <div class="step-box" id="step-denominator" data-step="denominator">
+                            <div class="fw-semibold text-secondary">8. Import Tabel: satu_sehat_ref_denominator.sql (HL7 DrugForm)</div>
+                            <i class="fa fa-circle status-icon pending"></i>
+                        </div>
                     </div>
 
                     <div class="text-center mt-4 pt-3 border-top">
@@ -245,7 +266,7 @@ $is_safe = (count($missing_tables) === 0);
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
 $(document).ready(function() {
-    const queue = ['form', 'route', 'snomed', 'loinc', 'kfa', 'tables'];
+    const queue = ['form', 'route', 'snomed', 'loinc', 'kfa', 'tables', 'numerator', 'denominator'];
     
     function processStep(index) {
         if (index >= queue.length) {

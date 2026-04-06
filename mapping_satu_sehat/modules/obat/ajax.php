@@ -184,12 +184,25 @@ try {
         $num_code   = trim($_POST['numerator_code'] ?? '');
         $den_code   = trim($_POST['denominator_code'] ?? '');
         
-        $ucum_list  = ['mg', 'ml', 'g', 'ug', 'mcg', 'l', 'iu', '[iu]', '%', 'mmol', 'mol', 'mg/ml', 'mg/g'];
-        $ucum_sys   = "http://unitsofmeasure.org";
-        $form_sys   = "http://terminology.hl7.org/CodeSystem/v3-orderableDrugForm";
-
-        $num_system = in_array(strtolower($num_code), $ucum_list) ? $ucum_sys : $form_sys;
-        $den_system = in_array(strtolower($den_code), $ucum_list) ? $ucum_sys : $form_sys;
+        // Numerator selalu UCUM
+        $num_system = 'http://unitsofmeasure.org';
+        
+        // Denominator: Bisa UCUM (cair) atau HL7 DrugForm (padat)
+        $den_system = 'http://terminology.hl7.org/CodeSystem/v3-orderableDrugForm';
+        
+        // Cek DB untuk kepastian (apakah UCUM?)
+        $c_num = $pdo->prepare("SELECT code FROM satu_sehat_ref_numerator WHERE code = ?");
+        $c_num->execute([$den_code]);
+        if ($c_num->fetch()) {
+            $den_system = 'http://unitsofmeasure.org';
+        } else {
+            // Cek apakah HL7 DrugForm
+            $c_den = $pdo->prepare("SELECT code FROM satu_sehat_ref_denominator WHERE code = ?");
+            $c_den->execute([$den_code]);
+            if ($c_den->fetch()) {
+                $den_system = 'http://terminology.hl7.org/CodeSystem/v3-orderableDrugForm';
+            }
+        }
 
         if (empty($kode_brng) || empty($kfa_code)) {
             echo json_encode(['status' => 'error', 'message' => 'Data tidak lengkap.']);
